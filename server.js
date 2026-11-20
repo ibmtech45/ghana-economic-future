@@ -1,10 +1,10 @@
 require('dns').setDefaultResultOrder('ipv4first');
 require('dotenv').config();
-const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -21,25 +21,12 @@ const EMAIL_USER = (process.env.EMAIL_USER || 'ibmtech45@gmail.com').trim();
 const EMAIL_PASS = (process.env.EMAIL_PASS || '').trim();
 const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'Ghana2027!').trim();
 
-const ARTICLES_FILE = path.join(__dirname, 'articles.json');
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
+const SUPABASE_KEY = (process.env.SUPABASE_KEY || '').trim();
 
-// Helper functions to read and write articles.json
-function readArticles() {
-  if (!fs.existsSync(ARTICLES_FILE)) {
-    fs.writeFileSync(ARTICLES_FILE, '[]', 'utf8');
-    return [];
-  }
-  try {
-    return JSON.parse(fs.readFileSync(ARTICLES_FILE, 'utf8'));
-  } catch (err) {
-    console.error('❌ Error reading articles.json:', err.message);
-    return [];
-  }
-}
-
-function writeArticles(articles) {
-  fs.writeFileSync(ARTICLES_FILE, JSON.stringify(articles, null, 2), 'utf8');
-}
+const supabase = SUPABASE_URL && SUPABASE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_KEY)
+  : null;
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -54,16 +41,34 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// ================= ARTICLES API =================
+// ================= ARTICLES API (SUPABASE) =================
 
 // Get all published articles
-app.get('/api/articles', (req, res) => {
-  const articles = readArticles();
-  res.json(articles);
+app.get('/api/articles', async (req, res) => {
+  if (!supabase) {
+    return res.status(500).json({ error: 'Supabase credentials are missing in environment variables.' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('articles')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    console.error('❌ Error fetching articles from Supabase:', err.message);
+    res.status(500).json({ error: 'Could not load articles.' });
+  }
 });
 
 // Publish a new article (Admin Password Protected)
-app.post('/api/articles', (req, res) => {
+app.post('/api/articles', async (req, res) => {
+  if (!supabase) {
+    return res.status(500).json({ success: false, message: 'Supabase credentials are missing in environment variables.' });
+  }
+
   const { password, title, category, summary, content, image } = req.body;
 
   if (!password || password.trim() !== ADMIN_PASSWORD) {
@@ -73,9 +78,7 @@ app.post('/api/articles', (req, res) => {
     return res.status(400).json({ success: false, message: 'Title and article content are required.' });
   }
 
-  const articles = readArticles();
   const newArticle = {
-    id: Date.now().toString(),
     title: title.trim(),
     category: (category || 'Economic Policy').trim(),
     summary: (summary || content.slice(0, 140) + '...').trim(),
@@ -88,30 +91,52 @@ app.post('/api/articles', (req, res) => {
     })
   };
 
-  articles.unshift(newArticle); // Put newest article at the top
-  writeArticles(articles);
+  try {
+    const { data, error } = await supabase
+      .from('articles')
+      .insert([newArticle])
+      .select()
+      .single();
 
-  console.log(`📰 NEW ARTICLE PUBLISHED: ${newArticle.title}`);
-  res.json({ success: true, article: newArticle });
+    if (error) throw error;
+
+    console.log(`📰 NEW ARTICLE PUBLISHED TO SUPABASE: ${data.title}`);
+    res.json({ success: true, article: data });
+  } catch (err) {
+    console.error('❌ Error saving article to Supabase:', err.message);
+    res.status(500).json({ success: false, message: 'Could not save article to database.' });
+  }
 });
 
 // Delete an article (Admin Password Protected)
-app.delete('/api/articles/:id', (req, res) => {
+app.delete('/api/articles/:id', async (req, res) => {
+  if (!supabase) {
+    return res.status(500).json({ success: false, message: 'Supabase credentials are missing in environment variables.' });
+  }
+
   const password = (req.headers['x-admin-password'] || '').trim();
   if (password !== ADMIN_PASSWORD) {
     return res.status(401).json({ success: false, message: 'Incorrect admin password.' });
   }
 
-  const articles = readArticles();
-  const filtered = articles.filter((a) => a.id !== req.params.id);
+  try {
+    const { data, error } = await supabase
+      .from('articles')
+      .delete()
+      .eq('id', req.params.id)
+      .select();
 
-  if (filtered.length === articles.length) {
-    return res.status(404).json({ success: false, message: 'Article not found.' });
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      return res.status(404).json({ success: false, message: 'Article not found.' });
+    }
+
+    console.log(`🗑️ ARTICLE DELETED FROM SUPABASE: ${req.params.id}`);
+    res.json({ success: true, message: 'Article deleted.' });
+  } catch (err) {
+    console.error('❌ Error deleting article from Supabase:', err.message);
+    res.status(500).json({ success: false, message: 'Could not delete article.' });
   }
-
-  writeArticles(filtered);
-  console.log(`🗑️ ARTICLE DELETED: ${req.params.id}`);
-  res.json({ success: true, message: 'Article deleted.' });
 });
 
 // ================= EXISTING ROUTES =================
