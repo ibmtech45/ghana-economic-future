@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | Ghana's Economic Future</title>
+  <style>
+    :root {
+      --green: #0b5d3b;
+      --green-d: #06301f;
+      --gold: #fcd116;
+      --red: #ce1126;
+      --bg: #07150f;
+      --glass: rgba(255, 255, 255, 0.07);
+      --line: rgba(255, 255, 255, 0.14);
+      --text: #eef5f0;
+      --muted: #a9bfb2;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body {
+      background: radial-gradient(circle at top right, #0e3b27, var(--bg) 60%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 28px 18px 60px;
+    }
+    .wrap { max-width: 900px; margin: 0 auto; }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    header h1 { font-size: 1.4rem; color: var(--gold); }
+    header a {
+      color: var(--text);
+      text-decoration: none;
+      background: var(--glass);
+      border: 1px solid var(--line);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+    header a:hover { border-color: var(--gold); color: var(--gold); }
+    .card {
+      background: var(--glass);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 22px;
+      margin-bottom: 26px;
+      backdrop-filter: blur(10px);
+    }
+    .card h2 { font-size: 1.15rem; margin-bottom: 16px; color: #fff; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 650px) { .grid { grid-template-columns: 1fr; } }
+    label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 6px; }
+    input, select, textarea {
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: rgba(0, 0, 0, 0.35);
+      color: #fff;
+      font-size: 0.95rem;
+      margin-bottom: 14px;
+    }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--gold); }
+    textarea { min-height: 160px; resize: vertical; line-height: 1.5; }
+    .btn {
+      background: var(--gold);
+      color: #062115;
+      font-weight: 700;
+      border: none;
+      padding: 12px 22px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.98rem;
+    }
+    .btn:hover { opacity: 0.92; }
+    .status { margin-top: 12px; font-size: 0.92rem; font-weight: 600; }
+    .ok { color: #4ade80; }
+    .err { color: #f87171; }
+    .article-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      padding: 14px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid var(--line);
+      margin-bottom: 10px;
+    }
+    .article-meta h3 { font-size: 1rem; margin-bottom: 4px; }
+    .article-meta span { font-size: 0.8rem; color: var(--gold); }
+    .btn-del {
+      background: rgba(206, 17, 38, 0.2);
+      color: #fca5a5;
+      border: 1px solid rgba(206, 17, 38, 0.5);
+      padding: 7px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      white-space: nowrap;
+    }
+    .btn-del:hover { background: var(--red); color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Ghana's Economic Future — Article Publisher</h1>
+      <a href="/">← View Live Site</a>
+    </header>
+
+    <div class="card">
+      <h2>Publish a New Article</h2>
+      <form id="publishForm">
+        <div class="grid">
+          <div>
+            <label for="password">Admin Password (from your .env)</label>
+            <input type="password" id="password" placeholder="Enter admin password" required>
+          </div>
+          <div>
+            <label for="category">Category</label>
+            <select id="category">
+              <option value="Fiscal Discipline">Fiscal Discipline</option>
+              <option value="Economic Growth">Economic Growth</option>
+              <option value="National Leadership">National Leadership</option>
+              <option value="Jobs & Youth">Jobs & Youth</option>
+              <option value="Private Sector">Private Sector</option>
+            </select>
+          </div>
+        </div>
+
+        <label for="title">Article Headline</label>
+        <input type="text" id="title" placeholder="e.g., How Fiscal Discipline Is Restoring Investor Confidence in Ghana" required>
+
+        <div class="grid">
+          <div>
+            <label for="imageFile">Upload Cover Image (optional)</label>
+            <input type="file" id="imageFile" accept="image/*">
+          </div>
+          <div>
+            <label for="imageUrl">Or Image Filename / URL (defaults to portrait.jpg)</label>
+            <input type="text" id="imageUrl" value="portrait.jpg" placeholder="portrait.jpg">
+          </div>
+        </div>
+
+        <label for="summary">Short Summary (shown on homepage card)</label>
+        <input type="text" id="summary" placeholder="1–2 sentences summarizing the key takeaway...">
+
+        <label for="content">Full Article Text</label>
+        <textarea id="content" placeholder="Write or paste the full article here..." required></textarea>
+
+        <button type="submit" class="btn">Publish Article</button>
+        <div id="statusMsg" class="status"></div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Published Articles</h2>
+      <div id="articlesList">Loading...</div>
+    </div>
+  </div>
+
+  <script>
+    let uploadedImageData = '';
+
+    document.getElementById('imageFile').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) { uploadedImageData = ''; return; }
+      const reader = new FileReader();
+      reader.onload = () => { uploadedImageData = reader.result; };
+      reader.readAsDataURL(file);
+    });
+
+    async function loadArticles() {
+      const list = document.getElementById('articlesList');
+      try {
+        const res = await fetch('/api/articles');
+        const articles = await res.json();
+        if (!articles.length) {
+          list.innerHTML = '<p style="color:var(--muted)">No articles published yet.</p>';
+          return;
+        }
+        list.innerHTML = articles.map(a => `
+          <div class="article-item">
+            <div class="article-meta">
+              <h3>${a.title}</h3>
+              <span>${a.category} • ${a.date}</span>
+            </div>
+            <button class="btn-del" onclick="deleteArticle('${a.id}')">Delete</button>
+          </div>
+        `).join('');
+      } catch (err) {
+        list.innerHTML = '<p class="err">Could not load articles.</p>';
+      }
+    }
+
+    document.getElementById('publishForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const statusMsg = document.getElementById('statusMsg');
+      statusMsg.className = 'status';
+      statusMsg.textContent = 'Publishing...';
+
+      const payload = {
+        password: document.getElementById('password').value,
+        title: document.getElementById('title').value,
+        category: document.getElementById('category').value,
+        summary: document.getElementById('summary').value,
+        content: document.getElementById('content').value,
+        image: uploadedImageData || document.getElementById('imageUrl').value || 'portrait.jpg'
+      };
+
+      try {
+        const res = await fetch('/api/articles', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          statusMsg.className = 'status ok';
+          statusMsg.textContent = '✅ Article published successfully!';
+          document.getElementById('title').value = '';
+          document.getElementById('summary').value = '';
+          document.getElementById('content').value = '';
+          document.getElementById('imageFile').value = '';
+          uploadedImageData = '';
+          loadArticles();
+        } else {
+          statusMsg.className = 'status err';
+          statusMsg.textContent = '❌ ' + (data.message || 'Failed to publish.');
+        }
+      } catch (err) {
+        statusMsg.className = 'status err';
+        statusMsg.textContent = '❌ Server error while publishing.';
+      }
+    });
+
+    async function deleteArticle(id) {
+      const password = document.getElementById('password').value || prompt('Enter Admin Password to delete:');
+      if (!password) return;
+      const res = await fetch('/api/articles/' + id, {
+        method: 'DELETE',
+        headers: { 'x-admin-password': password }
+      });
+      const data = await res.json();
+      if (data.success) {
+        loadArticles();
+      } else {
+        alert(data.message || 'Could not delete article.');
+      }
+    }
+
+    loadArticles();
+  </script>
+</body>
+</html>
