@@ -982,21 +982,20 @@ bindForm('#payForm', [['email', emailOK, 'Please enter a valid email.'], ['amoun
     } catch (err) {
       console.error('Error loading articles:', err);
     }
-  }
 
       currentArticleId = String(a.id);
-    document.getElementById('c-msg').textContent = '';
-    loadComments();
-    document.getElementById('articleModal').style.display = 'block';
-    const a = allPublishedArticles[idx];
-    if (!a) return;
-    document.getElementById('modalCategory').textContent = a.category;
-    document.getElementById('modalTitle').textContent = a.title;
-    document.getElementById('modalDate').textContent = a.date;
-    document.getElementById('modalImg').src = a.image || 'portrait.jpg';
-    document.getElementById('modalBody').textContent = a.content;
-    document.getElementById('articleModal').style.display = 'block';
-    document.body.style.overflow = 'hidden';
+   const a = allPublishedArticles[idx];
+  if (!a) return;
+  currentArticleId = String(a.id);
+  document.getElementById('c-msg').textContent = '';
+  loadComments();
+  document.getElementById('modalCategory').textContent = a.category;
+  document.getElementById('modalTitle').textContent = a.title;
+  document.getElementById('modalDate').textContent = a.date;
+  document.getElementById('modalImg').src = a.image || 'portrait.jpg';
+  document.getElementById('modalBody').textContent = a.content;
+  document.getElementById('articleModal').style.display = 'block';
+  document.body.style.overflow = 'hidden';
   }
 
   function closeArticleModal() {
