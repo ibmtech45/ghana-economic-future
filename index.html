@@ -982,6 +982,8 @@ bindForm('#payForm', [['email', emailOK, 'Please enter a valid email.'], ['amoun
     } catch (err) {
       console.error('Error loading articles:', err);
     }
+    }
+function openArticleModal(idx) {
 
       currentArticleId = String(a.id);
    const a = allPublishedArticles[idx];
