@@ -923,7 +923,7 @@ bindForm('#payForm', [['email', emailOK, 'Please enter a valid email.'], ['amoun
     }
   }
 
-  document.getElementById('c-submit').addEventListener('click', async () => {
+  document.getElementById('c-submit')?.addEventListener('click', async () => {
     const msg = document.getElementById('c-msg');
     const btn = document.getElementById('c-submit');
     if (!currentArticleId) return;
