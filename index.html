@@ -29,6 +29,68 @@
 <meta name="description" content="An independent civic information platform following the policies, budgets and leadership shaping Ghana’s economy, with an independent supporters’ initiative: Friends of Ghana’s Finance Minister.">
 
 <style>
+  /* 3D Animated Robotic AI Assistant Button */
+.ai-robot-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2px solid #facc15;
+  background: radial-gradient(circle at 30% 30%, #1e293b, #0b1120);
+  padding: 4px;
+  cursor: pointer;
+  z-index: 9999;
+  perspective: 600px;
+  box-shadow: 0 0 18px rgba(250, 204, 21, 0.45), 0 10px 25px rgba(0, 0, 0, 0.5);
+  animation: robotFloat3D 3.2s ease-in-out infinite, robotGlow 2.5s ease-in-out infinite alternate;
+  transition: transform 0.25s ease;
+}
+
+.ai-robot-btn img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.ai-robot-btn:hover {
+  transform: scale(1.12) rotateY(15deg);
+}
+
+/* Online pulse indicator dot */
+.ai-robot-btn::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 14px;
+  height: 14px;
+  background: #22c55e;
+  border: 2px solid #0b1120;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #22c55e;
+}
+
+@keyframes robotFloat3D {
+  0%, 100% {
+    transform: translateY(0px) rotateX(0deg) rotateY(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotateX(8deg) rotateY(-8deg);
+  }
+}
+
+@keyframes robotGlow {
+  from {
+    box-shadow: 0 0 14px rgba(250, 204, 21, 0.4), 0 8px 20px rgba(0, 0, 0, 0.5);
+  }
+  to {
+    box-shadow: 0 0 26px rgba(34, 197, 94, 0.65), 0 14px 28px rgba(0, 0, 0, 0.6);
+  }
+}
 /* ===== 1. TOKENS: Ghana colours ===== */
 :root{
   --green:#0b5d3b; --green-d:#06301f; --gold:#fcd116; --red:#ce1126; --white:#fff;
@@ -426,7 +488,7 @@ input.bad,select.bad,textarea.bad{border-color:#ff6b6b}
 </main>
 
 <!-- CHAT WIDGET -->
-<button class="chat-fab" id="chatFab" aria-label="Open chat">💬</button>
+<button class="ai-robot-btn" id="chatFab" aria-label="Open chat"><img src="/ai-robot.png" alt="AI Assistant"></button>
 <aside class="chat glass" id="chatBox" hidden><div class="chat-log" id="chatLog" aria-live="polite"><p class="bot">Hello. Ask me where to find a source or a section.</p></div>
   <form id="chatForm"><input id="chatInput" placeholder="Type a question…" aria-label="Chat message"><button class="btn btn-gold" type="submit">Send</button></form></aside>
 
