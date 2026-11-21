@@ -26,7 +26,7 @@ app.use((req, res, next) => {
 app.use(express.static(__dirname, {
   dotfiles: 'deny', // blocks .env, .gitignore and any other dotfile
   setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.png')) {
+    if (filePath.endsWith('ai-robot.png')) {
       res.setHeader('Content-Type', 'image/webp');
     }
   }
