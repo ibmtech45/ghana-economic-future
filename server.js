@@ -5,7 +5,7 @@ const express = require('express');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
 const { createClient } = require('@supabase/supabase-js');
-
+const rateLimit = require('express-rate-limit');
 const app = express();
 const port = process.env.PORT || 3000;
 
