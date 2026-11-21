@@ -13,7 +13,15 @@ app.set('trust proxy', 1);
 
 app.use(cors());
 app.use(express.json({ limit: '5mb' })); // Allows article images to be saved cleanly
-app.use(express.static(__dirname));
+
+
+app.use(express.static(__dirname, {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.png')) {
+      res.setHeader('Content-Type', 'image/webp');
+    }
+  }
+}));
 
 const PAYSTACK_SECRET = (process.env.PAYSTACK_SECRET_KEY || '').trim();
 const GEMINI_KEY = (process.env.GEMINI_API_KEY || '').trim();
