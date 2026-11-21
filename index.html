@@ -866,11 +866,95 @@ bindForm('#payForm', [['email', emailOK, 'Please enter a valid email.'], ['amoun
   <button onclick="shareArticle('linkedin')" style="background:#0A66C2;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.85rem;">LinkedIn</button>
   <button onclick="shareArticle('copy')" style="background:rgba(255,255,255,0.12);color:#fff;border:none;padding:8px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.85rem;">Copy Caption & Link</button>
 </div>
+    <!-- COMMENTS -->
+    <section style="margin-top:24px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.14);">
+      <h3 style="color:#fff;margin-bottom:12px;">Comments</h3>
+
+      <input id="c-name" maxlength="50" placeholder="Your name" aria-label="Your name">
+      <textarea id="c-text" maxlength="1000" rows="3" placeholder="Write a comment..." aria-label="Comment"></textarea>
+      <!-- honeypot: hidden from real people, bots fill it -->
+      <input id="c-website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true"
+             style="position:absolute;left:-9999px;width:1px;">
+      <button id="c-submit" class="btn btn-gold" type="button">Post comment</button>
+      <p id="c-msg" style="font-size:0.85rem;min-height:1.1rem;margin-top:8px;"></p>
+
+      <div id="comments-list" style="margin-top:14px;"></div>
+    </section>
   </div>
 </div>
 
 <script>
   let allPublishedArticles = [];
+  let currentArticleId = null;
+
+  async function loadComments() {
+    const list = document.getElementById('comments-list');
+    if (!currentArticleId) return;
+    list.textContent = 'Loading comments...';
+    try {
+      const res = await fetch('/api/comments/' + encodeURIComponent(currentArticleId));
+      const comments = await res.json();
+      list.innerHTML = '';
+      if (!Array.isArray(comments) || !comments.length) {
+        list.textContent = 'No comments yet. Be the first!';
+        return;
+      }
+      comments.forEach(c => {
+        const box = document.createElement('div');
+        box.style.cssText = 'border-bottom:1px solid rgba(255,255,255,0.12);padding:10px 0;';
+
+        const who = document.createElement('strong');
+        who.style.color = '#fcd116';
+        who.textContent = c.author_name;          // textContent keeps it safe
+
+        const when = document.createElement('small');
+        when.style.color = '#a9bfb2';
+        when.textContent = ' · ' + new Date(c.created_at).toLocaleString();
+
+        const body = document.createElement('p');
+        body.style.cssText = 'color:#e2eee6;margin:4px 0 0;white-space:pre-line;';
+        body.textContent = c.comment_text;
+
+        box.append(who, when, body);
+        list.appendChild(box);
+      });
+    } catch (e) {
+      list.textContent = 'Could not load comments.';
+    }
+  }
+
+  document.getElementById('c-submit').addEventListener('click', async () => {
+    const msg = document.getElementById('c-msg');
+    const btn = document.getElementById('c-submit');
+    if (!currentArticleId) return;
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          article_id: currentArticleId,
+          author_name: document.getElementById('c-name').value,
+          comment_text: document.getElementById('c-text').value,
+          website: document.getElementById('c-website').value
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        document.getElementById('c-text').value = '';
+        msg.style.color = '#7be0a3';
+        msg.textContent = 'Comment posted!';
+        loadComments();
+      } else {
+        msg.style.color = '#ff8a8a';
+        msg.textContent = data.error || 'Something went wrong.';
+      }
+    } catch (e) {
+      msg.style.color = '#ff8a8a';
+      msg.textContent = 'Could not reach the server. Try again.';
+    }
+    btn.disabled = false;
+  });
 
   async function loadLiveArticles() {
     const grid = document.getElementById('liveArticlesGrid');
@@ -900,7 +984,10 @@ bindForm('#payForm', [['email', emailOK, 'Please enter a valid email.'], ['amoun
     }
   }
 
-  function openArticleModal(idx) {
+      currentArticleId = String(a.id);
+    document.getElementById('c-msg').textContent = '';
+    loadComments();
+    document.getElementById('articleModal').style.display = 'block';
     const a = allPublishedArticles[idx];
     if (!a) return;
     document.getElementById('modalCategory').textContent = a.category;
