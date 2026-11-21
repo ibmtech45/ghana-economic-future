@@ -6,6 +6,7 @@ const cors = require('cors');
 const nodemailer = require('nodemailer');
 const { createClient } = require('@supabase/supabase-js');
 const rateLimit = require('express-rate-limit');
+
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -14,10 +15,18 @@ app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json({ limit: '5mb' })); // Allows article images to be saved cleanly
 
+// Never serve server code, package files or node_modules to the public
+app.use((req, res, next) => {
+  if (/^\/(server\.js|import\.js|package(-lock)?\.json|node_modules)(\/|$)/i.test(req.path)) {
+    return res.status(404).send('Not found');
+  }
+  next();
+});
 
 app.use(express.static(__dirname, {
-  setHeaders: (res, path) => {
-    if (path.endsWith('.png')) {
+  dotfiles: 'deny', // blocks .env, .gitignore and any other dotfile
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.png')) {
       res.setHeader('Content-Type', 'image/webp');
     }
   }
@@ -145,6 +154,63 @@ app.delete('/api/articles/:id', async (req, res) => {
     console.error('❌ Error deleting article from Supabase:', err.message);
     res.status(500).json({ success: false, message: 'Could not delete article.' });
   }
+});
+
+// ================= COMMENTS API (SUPABASE) =================
+
+const commentLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  limit: 5,                 // 5 comments per IP per window
+  message: { error: 'Too many comments. Please try again later.' }
+});
+
+// Load comments for one article
+app.get('/api/comments/:articleId', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const { data, error } = await supabase
+    .from('comments')
+    .select('id, author_name, comment_text, created_at')
+    .eq('article_id', req.params.articleId)
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  if (error) {
+    console.error('❌ Error loading comments:', error.message);
+    return res.status(500).json({ error: 'Could not load comments' });
+  }
+  res.json(data);
+});
+
+// Post a comment
+app.post('/api/comments', commentLimiter, async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const { article_id, author_name, comment_text, website } = req.body;
+
+  // Honeypot: real users never fill this hidden field, bots do
+  if (website) return res.json({ ok: true });
+
+  const name = String(author_name || '').trim();
+  const text = String(comment_text || '').trim();
+  const articleId = String(article_id || '').trim();
+
+  if (!articleId || !name || !text) {
+    return res.status(400).json({ error: 'Name and comment are required.' });
+  }
+  if (name.length > 50 || text.length > 1000) {
+    return res.status(400).json({ error: 'Name or comment is too long.' });
+  }
+
+  const { error } = await supabase
+    .from('comments')
+    .insert({ article_id: articleId, author_name: name, comment_text: text });
+
+  if (error) {
+    console.error('❌ Error saving comment:', error.message);
+    return res.status(500).json({ error: 'Could not save comment' });
+  }
+  res.json({ ok: true });
 });
 
 // ================= EXISTING ROUTES =================
