@@ -1103,8 +1103,26 @@ function openArticleModal(idx) {
 }
   loadLiveArticles();
   // ================= LIVE FOREX TRACKER =================
+
 let forexRatesToGHS = null;
 let forexToCedi = true;
+
+function updateForexConverter() {
+  if (!forexRatesToGHS) return;
+  const amount = parseFloat(document.getElementById('forexAmount').value) || 0;
+  const cur = document.getElementById('forexCurrency').value;
+  const rate = forexRatesToGHS[cur];
+  const out = document.getElementById('forexResult');
+  if (!rate) return;
+
+  if (forexToCedi) {
+    const converted = (amount * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    out.textContent = `${amount.toLocaleString()} ${cur} = GH₵ ${converted}`;
+  } else {
+    const converted = (amount / rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    out.textContent = `GH₵ ${amount.toLocaleString()} = ${converted} ${cur}`;
+  }
+}
 let allForexOptions = [];
 
 function renderForexDropdown(searchText = '') {
