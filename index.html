@@ -1105,7 +1105,44 @@ function updateForexConverter() {
     out.textContent = `GH₵ ${amount.toLocaleString()} = ${converted} ${cur}`;
   }
 }
+async function loadForexRates() {
+  try {
+    const res = await fetch('/api/forex');
+    const data = await res.json();
+    if (!data.toGHS) throw new Error('No rate data');
 
+    forexRatesToGHS = data.toGHS;
+    document.getElementById('rateUSD').textContent = `GH₵ ${data.toGHS.USD.toFixed(2)}`;
+    document.getElementById('rateGBP').textContent = `GH₵ ${data.toGHS.GBP.toFixed(2)}`;
+    document.getElementById('rateEUR').textContent = `GH₵ ${data.toGHS.EUR.toFixed(2)}`;
+    document.getElementById('rateSAR').textContent = `GH₵ ${data.toGHS.SAR.toFixed(2)}`;
+    document.getElementById('forexUpdated').textContent = `Updated: ${data.updated.slice(0, 16)} UTC`;
+
+    // Populate dropdown with all 160+ world currencies
+    const select = document.getElementById('forexCurrency');
+    const nameHelper = typeof Intl !== 'undefined' && Intl.DisplayNames
+      ? new Intl.DisplayNames(['en'], { type: 'currency' })
+      : null;
+
+    const popular = ['USD', 'GBP', 'EUR', 'SAR', 'AED', 'CAD', 'CNY', 'NGN', 'ZAR', 'XOF'];
+    const allCodes = Object.keys(data.toGHS).sort();
+    const ordered = [...popular.filter(c => data.toGHS[c]), ...allCodes.filter(c => !popular.includes(c))];
+
+    select.innerHTML = ordered.map(code => {
+      let label = code;
+      try {
+        const fullName = nameHelper ? nameHelper.of(code) : '';
+        if (fullName && fullName !== code) label = `${code} — ${fullName}`;
+      } catch (e) {}
+      return `<option value="${code}">${label}</option>`;
+    }).join('');
+
+    updateForexConverter();
+  } catch (err) {
+    document.getElementById('forexUpdated').textContent = 'Rates temporarily unavailable';
+    document.getElementById('forexResult').textContent = 'Could not load exchange rates.';
+  }
+}
 
 
 document.getElementById('forexAmount').addEventListener('input', updateForexConverter);
