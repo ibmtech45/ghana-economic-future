@@ -1187,22 +1187,6 @@ document.getElementById('forexSwapBtn').addEventListener('click', () => {
 
 loadForexRates();
 
-    updateForexConverter();
-  } catch (err) {
-    document.getElementById('forexUpdated').textContent = 'Rates temporarily unavailable';
-    document.getElementById('forexResult').textContent = 'Could not load exchange rates.';
-  }
-}
-
-
-document.getElementById('forexAmount').addEventListener('input', updateForexConverter);
-document.getElementById('forexCurrency').addEventListener('change', updateForexConverter);
-document.getElementById('forexSwapBtn').addEventListener('click', () => {
-  forexToCedi = !forexToCedi;
-  updateForexConverter();
-});
-
-loadForexRates();
 </script>
 </body> 
 </html>
