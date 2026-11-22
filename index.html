@@ -1105,25 +1105,7 @@ function updateForexConverter() {
   }
 }
 
-async function loadForexRates() {
-  try {
-    const res = await fetch('/api/forex');
-    const data = await res.json();
-    if (!data.toGHS) throw new Error('No rate data');
 
-    forexRatesToGHS = data.toGHS;
-    document.getElementById('rateUSD').textContent = `GH₵ ${data.toGHS.USD.toFixed(2)}`;
-    document.getElementById('rateGBP').textContent = `GH₵ ${data.toGHS.GBP.toFixed(2)}`;
-    document.getElementById('rateEUR').textContent = `GH₵ ${data.toGHS.EUR.toFixed(2)}`;
-    document.getElementById('rateSAR').textContent = `GH₵ ${data.toGHS.SAR.toFixed(2)}`;
-    document.getElementById('forexUpdated').textContent = `Updated: ${data.updated.slice(0, 16)} UTC`;
-
-    updateForexConverter();
-  } catch (err) {
-    document.getElementById('forexUpdated').textContent = 'Rates temporarily unavailable';
-    document.getElementById('forexResult').textContent = 'Could not load exchange rates.';
-  }
-}
 
 document.getElementById('forexAmount').addEventListener('input', updateForexConverter);
 document.getElementById('forexCurrency').addEventListener('change', updateForexConverter);
