@@ -357,7 +357,44 @@ Rules:
 
   res.status(503).json({ reply: 'Sorry, I could not respond right now. Please try again later.' });
 });
+// 5. Live Forex / Currency Rate Route (Cached 1 hour)
+let forexCache = { data: null, updatedAt: 0 };
 
+app.get('/api/forex', async (req, res) => {
+  const now = Date.now();
+  if (forexCache.data && now - forexCache.updatedAt < 60 * 60 * 1000) {
+    return res.json(forexCache.data);
+  }
+
+  try {
+    const response = await fetch('https://open.er-api.com/v6/latest/GHS');
+    const json = await response.json();
+
+    if (json.result !== 'success' || !json.rates) {
+      throw new Error('Invalid forex response');
+    }
+
+    const r = json.rates;
+    const payload = {
+      updated: json.time_last_update_utc,
+      toGHS: {
+        USD: Number((1 / r.USD).toFixed(2)),
+        GBP: Number((1 / r.GBP).toFixed(2)),
+        EUR: Number((1 / r.EUR).toFixed(2)),
+        CAD: Number((1 / r.CAD).toFixed(2)),
+        SAR: Number((1 / r.SAR).toFixed(2)),
+        CNY: Number((1 / r.CNY).toFixed(2)),
+        NGN: Number((1 / r.NGN).toFixed(4))
+      }
+    };
+
+    forexCache = { data: payload, updatedAt: now };
+    res.json(payload);
+  } catch (error) {
+    console.error('❌ Forex fetch error:', error.message);
+    res.status(500).json({ error: 'Could not load live exchange rates.' });
+  }
+});
 app.listen(port, () => {
   console.log(`✅ Ghana Economic Future server is running on port ${port}`);
 });

@@ -494,7 +494,67 @@ input.bad,select.bad,textarea.bad{border-color:#ff6b6b}
 
 <!-- FULL-SCREEN VIEWER -->
 <div class="lightbox" id="lightbox" hidden><button id="lbClose" aria-label="Close">✕</button><div class="lb-art" id="lbArt"></div><p id="lbCap"></p></div>
+<!-- LIVE FOREX & CEDI TRACKER -->
+<section id="forex" style="max-width:1100px;margin:60px auto;padding:0 20px;">
+  <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);border-radius:16px;padding:28px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:20px;">
+      <div>
+        <span style="color:#fcd116;font-size:0.8rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Live Market Data</span>
+        <h2 style="color:#fff;margin:6px 0 0;font-size:1.6rem;">Ghana Cedi (GHS) Forex Rates</h2>
+      </div>
+      <span id="forexUpdated" style="color:#a9bfb2;font-size:0.82rem;">Loading live rates...</span>
+    </div>
 
+    <!-- 4 Live Rate Cards -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:24px;">
+      <div style="background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:16px;">
+        <div style="color:#a9bfb2;font-size:0.82rem;">🇺🇸 1 USD to GHS</div>
+        <div id="rateUSD" style="color:#fcd116;font-size:1.5rem;font-weight:700;margin-top:6px;">--</div>
+      </div>
+      <div style="background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:16px;">
+        <div style="color:#a9bfb2;font-size:0.82rem;">🇬🇧 1 GBP to GHS</div>
+        <div id="rateGBP" style="color:#fcd116;font-size:1.5rem;font-weight:700;margin-top:6px;">--</div>
+      </div>
+      <div style="background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:16px;">
+        <div style="color:#a9bfb2;font-size:0.82rem;">🇪🇺 1 EUR to GHS</div>
+        <div id="rateEUR" style="color:#fcd116;font-size:1.5rem;font-weight:700;margin-top:6px;">--</div>
+      </div>
+      <div style="background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:16px;">
+        <div style="color:#a9bfb2;font-size:0.82rem;">🇸🇦 1 SAR to GHS</div>
+        <div id="rateSAR" style="color:#fcd116;font-size:1.5rem;font-weight:700;margin-top:6px;">--</div>
+      </div>
+    </div>
+
+    <!-- Quick Currency Converter -->
+    <div style="background:rgba(0,0,0,0.22);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:18px;">
+      <div style="color:#fff;font-weight:600;margin-bottom:12px;">Quick Currency Converter</div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
+        <input id="forexAmount" type="number" value="100" min="0" step="any"
+          style="flex:1;min-width:120px;padding:11px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:#062115;color:#fff;font-size:1rem;">
+        <select id="forexCurrency"
+          style="padding:11px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:#062115;color:#fff;font-size:1rem;">
+          <option value="USD">USD (US Dollar)</option>
+          <option value="GBP">GBP (British Pound)</option>
+          <option value="EUR">EUR (Euro)</option>
+          <option value="SAR">SAR (Saudi Riyal)</option>
+          <option value="CAD">CAD (Canadian Dollar)</option>
+          <option value="CNY">CNY (Chinese Yuan)</option>
+          <option value="NGN">NGN (Nigerian Naira)</option>
+        </select>
+        <button id="forexSwapBtn" type="button"
+          style="padding:11px 16px;border-radius:8px;border:none;background:#fcd116;color:#062115;font-weight:700;cursor:pointer;">
+          ⇄ Swap
+        </button>
+      </div>
+      <div id="forexResult" style="margin-top:14px;font-size:1.2rem;font-weight:700;color:#fcd116;">
+        Calculating...
+      </div>
+      <div style="margin-top:10px;font-size:0.75rem;color:#a9bfb2;">
+        <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener" style="color:#a9bfb2;">Rates By Exchange Rate API</a>
+      </div>
+    </div>
+  </div>
+</section>
 <footer class="footer"><div class="wrap">
   <div class="f-cols">
     <div><b>GHANA’S ECONOMIC FUTURE 🇬🇭</b><p>Leadership. Accountability. Economic Transformation.</p><p>One Vision, One Voice, One Ghana!</p></div>
@@ -1024,6 +1084,55 @@ function openArticleModal(idx) {
   }
 }
   loadLiveArticles();
+  // ================= LIVE FOREX TRACKER =================
+let forexRatesToGHS = null;
+let forexToCedi = true;
+
+function updateForexConverter() {
+  if (!forexRatesToGHS) return;
+  const amount = parseFloat(document.getElementById('forexAmount').value) || 0;
+  const cur = document.getElementById('forexCurrency').value;
+  const rate = forexRatesToGHS[cur];
+  const out = document.getElementById('forexResult');
+  if (!rate) return;
+
+  if (forexToCedi) {
+    const converted = (amount * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    out.textContent = `${amount.toLocaleString()} ${cur} = GH₵ ${converted}`;
+  } else {
+    const converted = (amount / rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    out.textContent = `GH₵ ${amount.toLocaleString()} = ${converted} ${cur}`;
+  }
+}
+
+async function loadForexRates() {
+  try {
+    const res = await fetch('/api/forex');
+    const data = await res.json();
+    if (!data.toGHS) throw new Error('No rate data');
+
+    forexRatesToGHS = data.toGHS;
+    document.getElementById('rateUSD').textContent = `GH₵ ${data.toGHS.USD.toFixed(2)}`;
+    document.getElementById('rateGBP').textContent = `GH₵ ${data.toGHS.GBP.toFixed(2)}`;
+    document.getElementById('rateEUR').textContent = `GH₵ ${data.toGHS.EUR.toFixed(2)}`;
+    document.getElementById('rateSAR').textContent = `GH₵ ${data.toGHS.SAR.toFixed(2)}`;
+    document.getElementById('forexUpdated').textContent = `Updated: ${data.updated.slice(0, 16)} UTC`;
+
+    updateForexConverter();
+  } catch (err) {
+    document.getElementById('forexUpdated').textContent = 'Rates temporarily unavailable';
+    document.getElementById('forexResult').textContent = 'Could not load exchange rates.';
+  }
+}
+
+document.getElementById('forexAmount').addEventListener('input', updateForexConverter);
+document.getElementById('forexCurrency').addEventListener('change', updateForexConverter);
+document.getElementById('forexSwapBtn').addEventListener('click', () => {
+  forexToCedi = !forexToCedi;
+  updateForexConverter();
+});
+
+loadForexRates();
 </script>
 </body> 
 </html>
