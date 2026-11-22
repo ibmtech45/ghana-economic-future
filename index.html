@@ -527,20 +527,37 @@ input.bad,select.bad,textarea.bad{border-color:#ff6b6b}
     </div>
 
     <!-- Quick Currency Converter -->
+   <style>
+      #forexSearch, #forexAmount, #forexCurrency {
+        background-color: #0b2e1f !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255,255,255,0.25) !important;
+        color-scheme: dark;
+      }
+      #forexSearch::placeholder { color: #a9bfb2 !important; }
+      #forexSearch:hover, #forexAmount:hover, #forexCurrency:hover,
+      #forexSearch:focus, #forexAmount:focus, #forexCurrency:focus {
+        background-color: #103d2a !important;
+        color: #ffffff !important;
+        border-color: #fcd116 !important;
+        outline: none !important;
+      }
+      #forexCurrency option {
+        background-color: #0b2e1f !important;
+        color: #ffffff !important;
+      }
+    </style>
+
     <div style="background:rgba(0,0,0,0.22);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:18px;">
       <div style="color:#fff;font-weight:600;margin-bottom:12px;">Quick Currency Converter</div>
+      <input id="forexSearch" type="text" placeholder="🔍 Search country or currency (e.g. Saudi, Naira, USD, Euro, Pound)..."
+        style="width:100%;padding:11px 14px;border-radius:8px;font-size:0.95rem;margin-bottom:12px;box-sizing:border-box;">
       <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
         <input id="forexAmount" type="number" value="100" min="0" step="any"
-          style="flex:1;min-width:120px;padding:11px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:#062115;color:#fff;font-size:1rem;">
+          style="flex:1;min-width:120px;padding:11px 14px;border-radius:8px;font-size:1rem;">
         <select id="forexCurrency"
-          style="padding:11px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:#062115;color:#fff;font-size:1rem;">
-          <option value="USD">USD (US Dollar)</option>
-          <option value="GBP">GBP (British Pound)</option>
-          <option value="EUR">EUR (Euro)</option>
-          <option value="SAR">SAR (Saudi Riyal)</option>
-          <option value="CAD">CAD (Canadian Dollar)</option>
-          <option value="CNY">CNY (Chinese Yuan)</option>
-          <option value="NGN">NGN (Nigerian Naira)</option>
+          style="flex:2;min-width:200px;padding:11px 14px;border-radius:8px;font-size:1rem;">
+          <option value="USD">USD — US Dollar</option>
         </select>
         <button id="forexSwapBtn" type="button"
           style="padding:11px 16px;border-radius:8px;border:none;background:#fcd116;color:#062115;font-weight:700;cursor:pointer;">
@@ -1088,23 +1105,39 @@ function openArticleModal(idx) {
   // ================= LIVE FOREX TRACKER =================
 let forexRatesToGHS = null;
 let forexToCedi = true;
+let allForexOptions = [];
 
-function updateForexConverter() {
-  if (!forexRatesToGHS) return;
-  const amount = parseFloat(document.getElementById('forexAmount').value) || 0;
-  const cur = document.getElementById('forexCurrency').value;
-  const rate = forexRatesToGHS[cur];
-  const out = document.getElementById('forexResult');
-  if (!rate) return;
+function renderForexDropdown(searchText = '') {
+  const select = document.getElementById('forexCurrency');
+  const query = searchText.trim().toLowerCase();
+  const currentVal = select.value;
 
-  if (forexToCedi) {
-    const converted = (amount * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    out.textContent = `${amount.toLocaleString()} ${cur} = GH₵ ${converted}`;
-  } else {
-    const converted = (amount / rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    out.textContent = `GH₵ ${amount.toLocaleString()} = ${converted} ${cur}`;
+  const filtered = query
+    ? allForexOptions.filter(item =>
+        item.code.toLowerCase().includes(query) ||
+        item.label.toLowerCase().includes(query)
+      )
+    : allForexOptions;
+
+  if (filtered.length === 0) {
+    select.innerHTML = '<option value="">No matching currency found</option>';
+    document.getElementById('forexResult').textContent = 'No matching currency found.';
+    return;
   }
+
+  select.innerHTML = filtered
+    .map(item => `<option value="${item.code}">${item.label}</option>`)
+    .join('');
+
+  if (filtered.some(item => item.code === currentVal)) {
+    select.value = currentVal;
+  } else {
+    select.value = filtered[0].code;
+  }
+
+  updateForexConverter();
 }
+
 async function loadForexRates() {
   try {
     const res = await fetch('/api/forex');
@@ -1118,8 +1151,6 @@ async function loadForexRates() {
     document.getElementById('rateSAR').textContent = `GH₵ ${data.toGHS.SAR.toFixed(2)}`;
     document.getElementById('forexUpdated').textContent = `Updated: ${data.updated.slice(0, 16)} UTC`;
 
-    // Populate dropdown with all 160+ world currencies
-    const select = document.getElementById('forexCurrency');
     const nameHelper = typeof Intl !== 'undefined' && Intl.DisplayNames
       ? new Intl.DisplayNames(['en'], { type: 'currency' })
       : null;
@@ -1128,14 +1159,33 @@ async function loadForexRates() {
     const allCodes = Object.keys(data.toGHS).sort();
     const ordered = [...popular.filter(c => data.toGHS[c]), ...allCodes.filter(c => !popular.includes(c))];
 
-    select.innerHTML = ordered.map(code => {
+    allForexOptions = ordered.map(code => {
       let label = code;
       try {
         const fullName = nameHelper ? nameHelper.of(code) : '';
         if (fullName && fullName !== code) label = `${code} — ${fullName}`;
       } catch (e) {}
-      return `<option value="${code}">${label}</option>`;
-    }).join('');
+      return { code, label };
+    });
+
+    renderForexDropdown('');
+  } catch (err) {
+    document.getElementById('forexUpdated').textContent = 'Rates temporarily unavailable';
+    document.getElementById('forexResult').textContent = 'Could not load exchange rates.';
+  }
+}
+
+document.getElementById('forexSearch').addEventListener('input', (e) => {
+  renderForexDropdown(e.target.value);
+});
+document.getElementById('forexAmount').addEventListener('input', updateForexConverter);
+document.getElementById('forexCurrency').addEventListener('change', updateForexConverter);
+document.getElementById('forexSwapBtn').addEventListener('click', () => {
+  forexToCedi = !forexToCedi;
+  updateForexConverter();
+});
+
+loadForexRates();
 
     updateForexConverter();
   } catch (err) {
