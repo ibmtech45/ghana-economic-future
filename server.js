@@ -464,7 +464,7 @@ app.post('/api/chat', async (req, res) => {
       ? `Live cached forex data: ${JSON.stringify(forexCache.data).slice(0, 600)}`
       : 'Live forex rates are available in the #forex section of this site.';
 
-  const models = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+ const models = ['gemini-3.5-flash-lite', 'gemini-3.0-flash'];
   const payload = {
     system_instruction: {
       parts: [
@@ -553,7 +553,7 @@ Category: ${category || 'Economic Policy'}
 Draft Summary: ${summary || ''}
 Draft Content: ${(content || '').slice(0, 3500)}`;
 
-  const models = ['gemini-2.5-flash-lite', 'gemini-2.5-flash'];
+  const models = ['gemini-3.5-flash-lite', 'gemini-3.0-flash'];
   for (const model of models) {
     try {
       const response = await fetch(
