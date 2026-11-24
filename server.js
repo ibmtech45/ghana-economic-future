@@ -484,10 +484,19 @@ ${forexContext}`
         }
       ]
     },
-    contents:
-      history && history.length > 0
-        ? history.slice(-8)
-        : [{ role: 'user', parts: [{ text: message || 'Hello' }] }],
+   contents: (() => {
+      const past = (Array.isArray(history) ? history.slice(-8) : [])
+        .map((m) => ({
+          role: m.role === 'model' || m.role === 'bot' || m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: String(m.parts?.[0]?.text || m.text || m.content || '').trim() }]
+        }))
+        .filter((m) => m.parts[0].text);
+      const currentText = String(message || 'Hello').trim();
+      if (!past.length || past[past.length - 1].role !== 'user' || past[past.length - 1].parts[0].text !== currentText) {
+        past.push({ role: 'user', parts: [{ text: currentText }] });
+      }
+      return past;
+    })(),
     generationConfig: { maxOutputTokens: 450, temperature: 0.7 }
   };
 
