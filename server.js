@@ -484,18 +484,34 @@ ${forexContext}`
         }
       ]
     },
-   contents: (() => {
-      const past = (Array.isArray(history) ? history.slice(-8) : [])
-        .map((m) => ({
-          role: m.role === 'model' || m.role === 'bot' || m.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: String(m.parts?.[0]?.text || m.text || m.content || '').trim() }]
-        }))
+  contents: (() => {
+      const normalized = (Array.isArray(history) ? history.slice(-8) : [])
+        .map((m) => {
+          const who = String(m.role || m.who || m.sender || m.from || '').toLowerCase();
+          const role = ['model', 'bot', 'assistant', 'ai', 'agent'].includes(who) ? 'model' : 'user';
+          const text = String(m.parts?.[0]?.text || m.text || m.content || m.message || '').trim();
+          return { role, parts: [{ text }] };
+        })
         .filter((m) => m.parts[0].text);
+
       const currentText = String(message || 'Hello').trim();
-      if (!past.length || past[past.length - 1].role !== 'user' || past[past.length - 1].parts[0].text !== currentText) {
-        past.push({ role: 'user', parts: [{ text: currentText }] });
+      normalized.push({ role: 'user', parts: [{ text: currentText }] });
+
+      while (normalized.length && normalized[0].role !== 'user') {
+        normalized.shift();
       }
-      return past;
+      const turns = [];
+      for (const item of normalized) {
+        const prev = turns[turns.length - 1];
+        if (prev && prev.role === item.role) {
+          if (!prev.parts[0].text.includes(item.parts[0].text)) {
+            prev.parts[0].text += '\n\n' + item.parts[0].text;
+          }
+        } else {
+          turns.push(item);
+        }
+      }
+      return turns;
     })(),
     generationConfig: { maxOutputTokens: 450, temperature: 0.7 }
   };
