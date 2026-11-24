@@ -63,7 +63,36 @@ const transporter = nodemailer.createTransport({
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
+// Dynamic Sitemap for Google Search Console
+app.get('/sitemap.xml', async (req, res) => {
+  const siteUrl = `https://${req.get('host')}`;
+  let urls = [
+    `  <url><loc>${siteUrl}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`
+  ];
 
+  if (supabase) {
+    try {
+      const { data } = await supabase
+        .from('articles')
+        .select('id, created_at')
+        .order('created_at', { ascending: false });
+
+      if (data) {
+        for (const a of data) {
+          const lastmod = a.created_at ? new Date(a.created_at).toISOString().split('T')[0] : '';
+          urls.push(
+            `  <url><loc>${siteUrl}/article/${a.id}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ''}<changefreq>weekly</changefreq><priority>0.8</priority></url>`
+          );
+        }
+      }
+    } catch (err) {
+      console.error('❌ Sitemap error:', err.message);
+    }
+  }
+
+  res.header('Content-Type', 'application/xml');
+  res.send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>`);
+});
 // ================= ARTICLES API (SUPABASE) =================
 
 // Get all published articles
