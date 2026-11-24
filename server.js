@@ -63,6 +63,7 @@ const transporter = nodemailer.createTransport({
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
+
 // Dynamic Sitemap for Google Search Console
 app.get('/sitemap.xml', async (req, res) => {
   const siteUrl = `https://${req.get('host')}`;
@@ -93,6 +94,7 @@ app.get('/sitemap.xml', async (req, res) => {
   res.header('Content-Type', 'application/xml');
   res.send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>`);
 });
+
 // ================= ARTICLES API (SUPABASE) =================
 
 // Get all published articles
@@ -193,7 +195,7 @@ app.delete('/api/articles/:id', async (req, res) => {
 
 // ================= ARTICLE SHARE PAGES (Facebook / WhatsApp thumbnails) =================
 
-const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
 }[c]));
 
@@ -464,7 +466,7 @@ app.post('/api/chat', async (req, res) => {
       ? `Live cached forex data: ${JSON.stringify(forexCache.data).slice(0, 600)}`
       : 'Live forex rates are available in the #forex section of this site.';
 
- const models = ['gemini-3.5-flash-lite', 'gemini-3.0-flash'];
+  const models = ['gemini-3.5-flash-lite', 'gemini-3.0-flash'];
   const payload = {
     system_instruction: {
       parts: [
@@ -484,7 +486,7 @@ ${forexContext}`
         }
       ]
     },
-  contents: (() => {
+    contents: (() => {
       const normalized = (Array.isArray(history) ? history.slice(-8) : [])
         .map((m) => {
           const who = String(m.role || m.who || m.sender || m.from || '').toLowerCase();
@@ -532,16 +534,16 @@ ${forexContext}`
 
       const data = await response.json();
       if (!response.ok || data.error) {
-        console.error(`❌ ${model} API error:`, JSON.stringify(data.error || data));
+        console.error(`❌ Chat ${model} API error:`, JSON.stringify(data.error || data));
         continue;
       }
-      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
+      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (reply) {
         return res.json({ reply });
       }
     } catch (error) {
-      console.error(`❌ ${model} error:`, error.message);
+      console.error(`❌ Chat ${model} error:`, error.message);
     }
   }
 
@@ -566,11 +568,17 @@ app.post('/api/admin/seo-share', async (req, res) => {
   const prompt = `You are an expert Ghanaian digital news editor and SEO strategist for "Ghana's Economic Future".
 Analyze this draft article and return ONLY valid JSON (no markdown, no extra text) with these exact keys:
 {
-  "seoTitle": "Compelling Google-friendly headline (50-65 chars) targeting Ghana & diaspora readers",
-  "seoSummary": "Punchy meta description / summary (130-155 chars) that encourages clicks",
-  "keywords": ["6 to 8 high-search Ghana economic/news keywords"],
-  "whatsappPost": "Ready-to-forward WhatsApp broadcast with 3 short bullet highlights, clear call-to-action, and the link: ${link}",
-  "facebookPost": "Engaging Facebook post with a strong hook, 2-3 short lines, relevant hashtags (#GhanaEconomy #GhanaNews #AtoForson etc.), and the link: ${link}"
+  "seoTitle": "60-char max SEO headline",
+  "metaTitle": "60-char max SEO headline",
+  "metaDescription": "155-char max meta description",
+  "keywords": "comma-separated SEO keywords",
+  "slug": "url-friendly-article-slug",
+  "facebook": "Engaging Facebook post with call to action and ${link}",
+  "facebookPost": "Engaging Facebook post with call to action and ${link}",
+  "twitter": "Punchy X/Twitter post under 260 chars with hashtags and ${link}",
+  "xPost": "Punchy X/Twitter post under 260 chars with hashtags and ${link}",
+  "whatsapp": "Formatted WhatsApp broadcast summary with ${link}",
+  "whatsappPost": "Formatted WhatsApp broadcast summary with ${link}"
 }
 
 Draft Title: ${title || ''}
@@ -579,6 +587,7 @@ Draft Summary: ${summary || ''}
 Draft Content: ${(content || '').slice(0, 3500)}`;
 
   const models = ['gemini-3.5-flash-lite', 'gemini-3.0-flash'];
+
   for (const model of models) {
     try {
       const response = await fetch(
@@ -593,7 +602,7 @@ Draft Content: ${(content || '').slice(0, 3500)}`;
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             generationConfig: {
               temperature: 0.7,
-              maxOutputTokens: 900,
+              maxOutputTokens: 2500,
               responseMimeType: 'application/json'
             }
           })
@@ -601,6 +610,11 @@ Draft Content: ${(content || '').slice(0, 3500)}`;
       );
 
       const data = await response.json();
+      if (!response.ok || data.error) {
+        console.error(`❌ SEO ${model} API error:`, JSON.stringify(data.error || data));
+        continue;
+      }
+
       const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (rawText) {
         const cleaned = rawText.replace(/```json|```/gi, '').trim();
