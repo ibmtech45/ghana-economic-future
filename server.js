@@ -426,27 +426,69 @@ app.get('/api/paystack/verify/:reference', async (req, res) => {
   }
 });
 
-// 4. AI Chat Assistant Route
+// 4. AI Agent Route (Reads live Supabase articles + Forex + Guides visitors)
 app.post('/api/chat', async (req, res) => {
   const { message, history } = req.body;
-  console.log('💬 AI Chat request received');
+  console.log('🤖 AI Agent request received');
 
   if (!GEMINI_KEY) {
     return res.status(500).json({ reply: 'AI key is missing in environment variables.' });
   }
 
-  const models = ['gemini-3.5-flash-lite', 'gemini-3.8-flash'];
+  // Pull latest published articles from Supabase so the Agent knows your real content
+  let articlesContext = 'No published articles loaded.';
+  if (supabase) {
+    try {
+      const { data: articles } = await supabase
+        .from('articles')
+        .select('id, title, category, summary, date')
+        .order('created_at', { ascending: false })
+        .limit(15);
+
+      if (articles && articles.length > 0) {
+        articlesContext = articles
+          .map(
+            (a) =>
+              `- "${a.title}" (${a.category || 'Policy'}, ${a.date || ''}): ${a.summary || ''} | Link: https://ghana-economic-future.onrender.com/article/${a.id}`
+          )
+          .join('\n');
+      }
+    } catch (e) {
+      console.error('Agent Supabase fetch error:', e.message);
+    }
+  }
+
+  // Pull cached live forex rates if available
+  const forexContext =
+    typeof forexCache !== 'undefined' && forexCache && forexCache.data
+      ? `Live cached forex data: ${JSON.stringify(forexCache.data).slice(0, 600)}`
+      : 'Live forex rates are available in the #forex section of this site.';
+
+  const models = ['gemini-2.5-flash-lite', 'gemini-2.5-flash'];
   const payload = {
     system_instruction: {
-      parts: [{
-        text: `You are the civic and economic information assistant for "Ghana’s Economic Future", a platform following the policies, budgets, and leadership of Dr. Cassiel Ato Forson (Minister for Finance, Ghana).
-Rules:
-- Answer questions accurately based on the platform's focus on transparency, economic growth, and the 2027 Budget / New Economy plan.
-- Keep answers concise, helpful, and professional.`
-      }]
+      parts: [
+        {
+          text: `You are the AI Agent for "Ghana's Economic Future", an independent civic and economic information platform following Dr. Cassiel Ato Forson's economic policies, the 2027 Budget, and national development.
+
+Your Capabilities & Rules:
+1. Recommend and link directly to relevant published articles from the list below whenever a visitor asks about a topic covered on the site.
+2. Answer questions using the live forex context if asked about Cedi exchange rates.
+3. Guide visitors to site sections when helpful: About (#about), Forex (#forex), Articles (#articles), Join/Volunteer (#movement), and Support/Contribute via Paystack (#payForm).
+4. Keep answers clear, accurate, concise, and helpful.
+
+Published Articles on this Platform:
+${articlesContext}
+
+${forexContext}`
+        }
+      ]
     },
-    contents: history && history.length > 0 ? history.slice(-8) : [{ role: 'user', parts: [{ text: message || 'Hello' }] }],
-    generationConfig: { maxOutputTokens: 150, temperature: 0.7 }
+    contents:
+      history && history.length > 0
+        ? history.slice(-8)
+        : [{ role: 'user', parts: [{ text: message || 'Hello' }] }],
+    generationConfig: { maxOutputTokens: 450, temperature: 0.7 }
   };
 
   for (const model of models) {
@@ -475,6 +517,73 @@ Rules:
   }
 
   res.status(503).json({ reply: 'Sorry, I could not respond right now. Please try again later.' });
+});
+
+// 4B. Admin Auto-SEO & Social Share Pack Generator (Password Protected)
+app.post('/api/admin/seo-share', async (req, res) => {
+  const { password, title, category, summary, content, articleUrl } = req.body;
+
+  if (!password || password.trim() !== ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, message: 'Incorrect admin password.' });
+  }
+  if (!GEMINI_KEY) {
+    return res.status(500).json({ success: false, message: 'AI key is missing in environment variables.' });
+  }
+  if (!title && !content) {
+    return res.status(400).json({ success: false, message: 'Enter a title or article content first.' });
+  }
+
+  const link = articleUrl || 'https://ghana-economic-future.onrender.com/#articles';
+  const prompt = `You are an expert Ghanaian digital news editor and SEO strategist for "Ghana's Economic Future".
+Analyze this draft article and return ONLY valid JSON (no markdown, no extra text) with these exact keys:
+{
+  "seoTitle": "Compelling Google-friendly headline (50-65 chars) targeting Ghana & diaspora readers",
+  "seoSummary": "Punchy meta description / summary (130-155 chars) that encourages clicks",
+  "keywords": ["6 to 8 high-search Ghana economic/news keywords"],
+  "whatsappPost": "Ready-to-forward WhatsApp broadcast with 3 short bullet highlights, clear call-to-action, and the link: ${link}",
+  "facebookPost": "Engaging Facebook post with a strong hook, 2-3 short lines, relevant hashtags (#GhanaEconomy #GhanaNews #AtoForson etc.), and the link: ${link}"
+}
+
+Draft Title: ${title || ''}
+Category: ${category || 'Economic Policy'}
+Draft Summary: ${summary || ''}
+Draft Content: ${(content || '').slice(0, 3500)}`;
+
+  const models = ['gemini-2.5-flash-lite', 'gemini-2.5-flash'];
+  for (const model of models) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': GEMINI_KEY
+          },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 900,
+              responseMimeType: 'application/json'
+            }
+          })
+        }
+      );
+
+      const data = await response.json();
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (rawText) {
+        const cleaned = rawText.replace(/```json|```/gi, '').trim();
+        const seo = JSON.parse(cleaned);
+        return res.json({ success: true, seo });
+      }
+    } catch (error) {
+      console.error(`❌ SEO Generator ${model} error:`, error.message);
+    }
+  }
+
+  res.status(503).json({ success: false, message: 'Could not generate SEO pack right now. Try again.' });
 });
 
 // 5. Live Forex / Currency Rate Route (All World Currencies, Cached 1 hour)
