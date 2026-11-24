@@ -600,7 +600,7 @@ const DOWN = 'We couldn’t reach the server. Please try again, or contact us by
 
 async function postJSON(url, body) {
   const ctl = new AbortController();
-  const t = setTimeout(() => ctl.abort(), 10000);
+  const t = setTimeout(() => ctl.abort(), 30000);
   try {
     const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: ctl.signal });
     if (!res.ok) throw new Error('HTTP ' + res.status);
