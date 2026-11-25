@@ -848,9 +848,14 @@ function bindForm(id, rules, send) {
 }
 const need = v => v.length > 1, any = v => v !== '', agree = v => v === 'on';
 
-const mail = (subject, body) => {
-  location.href = 'mailto:ibmtech45@gmail.com?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
-  return 'Your email app should open. Press send to finish.';
+const mail = async (subject, body) => {
+  await postJSON(API.quote, {
+    name: 'Website Visitor',
+    phone: 'See details below',
+    service: subject,
+    details: body
+  });
+  return 'Thank you! Your submission has been received.';
 };
 bindForm('#joinForm', [['name', need, 'Please enter your full name.'], ['email', emailOK, 'Please enter a valid email.'], ['country', need, 'Please enter your country.'], ['consent', agree, 'Please tick the consent box to continue.']],
   d => mail('Membership registration', `Name: ${d.name}\nEmail: ${d.email}\nCountry: ${d.country}\nI consent to my details being stored to manage my membership.`));
