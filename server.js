@@ -337,25 +337,19 @@ app.post('/api/comments', commentLimiter, async (req, res) => {
 // ================= EXISTING ROUTES =================
 
 // 1. Quote / Partnership Request Route
-app.post('/api/quote', (req, res) => {
-  const { name, phone, service, details } = req.body;
-  console.log('🚨 NEW LEAD / QUOTE REQUEST:', name);
+app.post('/api/quote', async (req, res) => {
+  try {
+    const { name, phone, service, details } = req.body;
+    const { error } = await supabase
+      .from('submissions')
+      .insert([{ name, phone, service, details }]);
 
-  const mailOptions = {
-    from: EMAIL_USER,
-    to: EMAIL_USER,
-    subject: `New GEF Lead: ${service || 'Partnership'} - ${name}`,
-    text: `Name/Org: ${name}\nContact: ${phone}\nDetails: ${details}`
-  };
-
-  transporter.sendMail(mailOptions, (error) => {
-    if (error) {
-      console.error('❌ Error sending email:', error);
-      return res.status(500).json({ message: 'Error sending email alert.' });
-    }
-    console.log('✅ Quote email alert sent!');
-    res.json({ message: 'Success! Your request was received.' });
-  });
+    if (error) throw error;
+    res.json({ success: true, message: 'Submission saved.' });
+  } catch (err) {
+    console.error('❌ Error saving submission:', err);
+    res.status(500).json({ error: 'Failed to save submission.' });
+  }
 });
 
 // 2. Initialize Paystack Payment
