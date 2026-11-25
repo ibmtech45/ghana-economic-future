@@ -351,7 +351,25 @@ app.post('/api/quote', async (req, res) => {
     res.status(500).json({ error: 'Failed to save submission.' });
   }
 });
+// Fetch Submissions (Admin Password Protected)
+app.post('/api/submissions', async (req, res) => {
+  const { password } = req.body;
+  if (!password || password.trim() !== ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, message: 'Incorrect admin password.' });
+  }
+  try {
+    const { data, error } = await supabase
+      .from('submissions')
+      .select('*')
+      .order('created_at', { ascending: false });
 
+    if (error) throw error;
+    res.json({ success: true, data: data || [] });
+  } catch (err) {
+    console.error('❌ Error fetching submissions:', err.message);
+    res.status(500).json({ success: false, message: 'Could not load submissions.' });
+  }
+});
 // 2. Initialize Paystack Payment
 app.post('/api/paystack/initialize', async (req, res) => {
   const { email, amount, item } = req.body;

@@ -849,9 +849,11 @@ function bindForm(id, rules, send) {
 const need = v => v.length > 1, any = v => v !== '', agree = v => v === 'on';
 
 const mail = async (subject, body) => {
+  const nameMatch = body.match(/Name:\s*(.+)/) || body.match(/From:\s*(.+?)\s*\(/);
+  const emailMatch = body.match(/Email:\s*(.+)/) || body.match(/\(([^)]+@[^)]+)\)/);
   await postJSON(API.quote, {
-    name: 'Website Visitor',
-    phone: 'See details below',
+    name: nameMatch ? nameMatch[1].trim() : 'Website Visitor',
+    phone: emailMatch ? emailMatch[1].trim() : 'See details below',
     service: subject,
     details: body
   });

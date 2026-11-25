@@ -265,6 +265,73 @@
       <h2>Published Articles</h2>
       <div id="articlesList">Loading...</div>
     </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+        <h2 style="margin:0;">Members, Volunteers &amp; Messages</h2>
+        <button type="button" id="loadSubsBtn" class="btn" style="width:auto;margin:0;padding:8px 16px;">Load Submissions</button>
+      </div>
+      <div id="subsStatus" style="font-size:0.85rem;color:var(--muted);margin-bottom:10px;">
+        Enter your admin password above, then click <strong>Load Submissions</strong>.
+      </div>
+      <div id="subsList"></div>
+    </div>
+
+    <script>
+      document.getElementById('loadSubsBtn').addEventListener('click', async () => {
+        const password = document.getElementById('password').value.trim();
+        const status = document.getElementById('subsStatus');
+        const list = document.getElementById('subsList');
+
+        if (!password) {
+          status.textContent = 'Please enter your admin password at the top first.';
+          return;
+        }
+
+        status.textContent = 'Loading submissions...';
+        list.innerHTML = '';
+
+        try {
+          const res = await fetch('/api/submissions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+          });
+          const data = await res.json();
+
+          if (!res.ok || !data.success) {
+            status.textContent = data.message || 'Could not load submissions.';
+            return;
+          }
+
+          const rows = data.data || [];
+          status.textContent = `Showing ${rows.length} submission${rows.length === 1 ? '' : 's'}.`;
+
+          if (!rows.length) {
+            list.innerHTML = '<p style="color:var(--muted);">No submissions yet.</p>';
+            return;
+          }
+
+          const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+          }[c]));
+
+          list.innerHTML = rows.map((r) => `
+            <div style="padding:12px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.12);border-radius:8px;background:rgba(255,255,255,0.03);">
+              <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+                <strong style="color:#f4c430;">${esc(r.service || 'Submission')}</strong>
+                <span style="font-size:0.8rem;color:var(--muted);">${r.created_at ? new Date(r.created_at).toLocaleString() : ''}</span>
+              </div>
+              <div style="font-size:0.9rem;margin-bottom:6px;">
+                <strong>${esc(r.name)}</strong> &mdash; <span style="color:#a9bfb2;">${esc(r.phone)}</span>
+              </div>
+              <div style="font-size:0.85rem;white-space:pre-wrap;color:var(--muted);">${esc(r.details)}</div>
+            </div>
+          `).join('');
+        } catch (err) {
+          status.textContent = 'Connection error while loading submissions.';
+        }
+      });
+    </script>
   </div>
 
   <script>
