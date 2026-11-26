@@ -290,6 +290,26 @@ app.post('/api/articles', async (req, res) => {
     })
       .then(r => console.log(`🔔 IndexNow ping status: ${r.status}`))
       .catch(e => console.error('❌ IndexNow ping failed:', e.message));
+      // Auto-broadcast Web Push Notification via OneSignal
+    if (process.env.ONESIGNAL_APP_ID && process.env.ONESIGNAL_API_KEY) {
+      fetch('https://api.onesignal.com/notifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Authorization': `Key ${process.env.ONESIGNAL_API_KEY}`
+        },
+        body: JSON.stringify({
+          app_id: process.env.ONESIGNAL_APP_ID,
+          target_channel: 'push',
+          included_segments: ['Total Subscriptions'],
+          headings: { en: newArticle.title.slice(0, 80) },
+          contents: { en: (newArticle.summary || 'New report published on Ghana Economic Future.').slice(0, 140) },
+          url: 'https://ghana-economic-future.onrender.com/#articles'
+        })
+      })
+        .then(r => console.log(`📣 OneSignal push status: ${r.status}`))
+        .catch(e => console.error('❌ OneSignal push failed:', e.message));
+    }
     console.log(`📰 NEW ARTICLE PUBLISHED TO SUPABASE: ${data.title}`);
     res.json({ success: true, article: data });
   } catch (err) {

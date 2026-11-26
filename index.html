@@ -281,6 +281,15 @@ input.bad,select.bad,textarea.bad{border-color:#ff6b6b}
   .tilt{transform:none}
 }
 </style>
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "8678c001-c5f6-47bf-bbe7-d2369a42b4ae",
+    });
+  });
+</script>
 </head>
 <body>
 
