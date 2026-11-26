@@ -386,28 +386,28 @@ app.get('/api/economy', async (req, res) => {
   ];
 
   try {
-    const wbResults = await Promise.all(
-      indicators.map(async (ind) => {
-        try {
-          const r = await fetch(
-            `https://api.worldbank.org/v2/country/GHA/indicator/${ind.code}?format=json&per_page=10`
-          );
-          const json = await r.json();
-          const series = (Array.isArray(json) && Array.isArray(json[1]) ? json[1] : [])
-            .filter((row) => row.value !== null)
-            .map((row) => ({ year: row.date, value: Number(row.value) }));
+    const wbResults = [];
+    for (const ind of indicators) {
+      try {
+        const r = await fetch(
+          `https://api.worldbank.org/v2/country/GHA/indicator/${ind.code}?format=json&mrnev=6`
+        );
+        const json = await r.json();
+        const series = (Array.isArray(json) && Array.isArray(json[1]) ? json[1] : [])
+          .filter((row) => row.value !== null)
+          .map((row) => ({ year: row.date, value: Number(row.value) }));
 
-          return {
-            ...ind,
-            latest: series[0] || null,
-            history: series.slice(0, 6).reverse(),
-            source: 'World Bank Open Data'
-          };
-        } catch {
-          return { ...ind, latest: null, history: [], source: 'World Bank Open Data' };
-        }
-      })
-    );
+        wbResults.push({
+          ...ind,
+          latest: series[0] || null,
+          history: series.slice(0, 6).reverse(),
+          source: 'World Bank Open Data'
+        });
+      } catch (wbErr) {
+        console.error(`⚠️ World Bank fetch failed for ${ind.code}:`, wbErr.message);
+        wbResults.push({ ...ind, latest: null, history: [], source: 'World Bank Open Data' });
+      }
+    }
 
     let forex = null;
     try {
@@ -433,7 +433,9 @@ app.get('/api/economy', async (req, res) => {
       fetchedAt: new Date().toISOString()
     };
 
-    economyCache = { data: payload, updatedAt: Date.now() };
+    if (wbResults.filter((i) => i.latest !== null).length >= 2) {
+      economyCache = { data: payload, updatedAt: Date.now() };
+    }
     res.json(payload);
   } catch (err) {
     console.error('❌ Error fetching economic data:', err.message);
