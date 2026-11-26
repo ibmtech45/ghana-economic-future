@@ -255,7 +255,14 @@ app.post('/api/articles', async (req, res) => {
       .single();
 
     if (error) throw error;
-
+// Auto-sync uploaded article photo to Media Gallery
+    if (image && ALLOWED_IMAGE_REGEX.test(image)) {
+      await supabase.from('gallery').insert([{
+        title: newArticle.title.slice(0, 140),
+        credit: newArticle.category || 'Public Record',
+        image
+      }]);
+    }
     console.log(`📰 NEW ARTICLE PUBLISHED TO SUPABASE: ${data.title}`);
     res.json({ success: true, article: data });
   } catch (err) {
