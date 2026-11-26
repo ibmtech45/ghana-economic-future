@@ -371,8 +371,89 @@ input.bad,select.bad,textarea.bad{border-color:#ff6b6b}
 <!-- 4. ECONOMY DASHBOARD -->
 <section class="sec" id="economy"><div class="wrap">
   <header class="sec-head reveal"><p class="eyebrow">Data, not slogans</p><h2 class="grad-text">Ghana Economic Dashboard</h2></header>
-  <p class="lead reveal">Pick an indicator, then add figures copied from an official release. Every point needs a source and date. The page ships with no invented numbers.</p>
-  <div class="dash glass reveal">
+  <p class="lead reveal">Live Ghanaian economic indicators pulled automatically from World Bank Open Data and daily exchange rate feeds.</p>
+<div id="autoEconWrap" style="margin-top:20px;">
+    <p id="autoEconStatus" style="font-size:0.9rem;color:#a9bfb2;margin-bottom:14px;">Loading live official data...</p>
+    <div id="autoForexGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px;"></div>
+    <div id="autoIndGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;"></div>
+  </div>
+
+  <script>
+    (async function loadAutoEconomy() {
+      const status = document.getElementById('autoEconStatus');
+      const fxGrid = document.getElementById('autoForexGrid');
+      const indGrid = document.getElementById('autoIndGrid');
+
+      const fmt = (ind, v) => {
+        if (v === null || v === undefined || Number.isNaN(v)) return 'N/A';
+        if (ind.unit === 'USD') return '$' + (v / 1e9).toFixed(1) + 'B';
+        return v.toFixed(1) + '%';
+      };
+
+      try {
+        const res = await fetch('/api/economy');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+
+        const updatedDate = data.fetchedAt ? new Date(data.fetchedAt).toLocaleDateString() : '';
+        status.textContent = `Official data synced automatically • Last checked: ${updatedDate}`;
+
+        if (data.forex) {
+          const pairs = [
+            { label: 'USD → GHS', val: `GH₵ ${data.forex.usd.toFixed(2)}` },
+            { label: 'EUR → GHS', val: `GH₵ ${data.forex.eur.toFixed(2)}` },
+            { label: 'GBP → GHS', val: `GH₵ ${data.forex.gbp.toFixed(2)}` }
+          ];
+          fxGrid.innerHTML = pairs.map((p) => `
+            <div class="glass" style="padding:14px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.12);">
+              <div style="font-size:0.78rem;color:#a9bfb2;letter-spacing:0.05em;">${p.label}</div>
+              <div style="font-size:1.45rem;font-weight:700;color:#f4c430;margin:4px 0;">${p.val}</div>
+              <div style="font-size:0.72rem;color:#8aa396;">Source: ${data.forex.source}</div>
+            </div>
+          `).join('');
+        }
+
+        if (Array.isArray(data.indicators)) {
+          indGrid.innerHTML = data.indicators.map((ind) => {
+            const latestVal = ind.latest ? fmt(ind, ind.latest.value) : 'N/A';
+            const latestYr = ind.latest ? ind.latest.year : '';
+            const hist = ind.history || [];
+            const maxAbs = Math.max(...hist.map((h) => Math.abs(h.value)), 1);
+
+            const bars = hist.map((h) => {
+              const pct = Math.max(12, Math.round((Math.abs(h.value) / maxAbs) * 100));
+              const color = h.value < 0 ? '#f87171' : '#f4c430';
+              return `
+                <div title="${h.year}: ${fmt(ind, h.value)}" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:70px;gap:4px;">
+                  <div style="width:100%;max-width:26px;height:${pct}%;background:${color};border-radius:4px 4px 0 0;opacity:0.9;"></div>
+                  <span style="font-size:0.68rem;color:#8aa396;">${String(h.year).slice(-2)}</span>
+                </div>
+              `;
+            }).join('');
+
+            return `
+              <div class="glass" style="padding:16px;border-radius:12px;border:1px solid rgba(255,255,255,0.12);display:flex;flex-direction:column;justify-content:space-between;">
+                <div>
+                  <div style="font-size:0.82rem;color:#a9bfb2;">${ind.label}</div>
+                  <div style="display:flex;align-items:baseline;gap:8px;margin:6px 0 12px;">
+                    <span style="font-size:1.6rem;font-weight:700;color:#fff;">${latestVal}</span>
+                    <span style="font-size:0.78rem;color:#f4c430;">${latestYr}</span>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:flex-end;gap:6px;margin:8px 0 10px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.08);">
+                  ${bars}
+                </div>
+                <div style="font-size:0.72rem;color:#8aa396;">Source: ${ind.source}</div>
+              </div>
+            `;
+          }).join('');
+        }
+      } catch (err) {
+        status.textContent = 'Live economic data is temporarily unavailable. Please refresh in a moment.';
+      }
+    })();
+  </script>
+  <div class="dash glass reveal" style="display:none;">
     <div class="dash-ctrl">
       <label>Indicator
         <select id="indSel"><option>Inflation (%)</option><option>Exchange rate (GH¢ per US$)</option><option>GDP growth (%)</option><option>Public debt (% of GDP)</option><option>Policy rate (%)</option><option>Revenue (GH¢ bn)</option><option>Expenditure (GH¢ bn)</option><option>Unemployment (%)</option><option>Trade balance (US$ bn)</option></select>
