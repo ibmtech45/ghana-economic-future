@@ -369,6 +369,76 @@ app.post('/api/submissions', async (req, res) => {
     console.error('❌ Error fetching submissions:', err.message);
     res.status(500).json({ success: false, message: 'Could not load submissions.' });
   }
+});// Automated Ghana Economic Data (World Bank + Live Forex, cached 12 hours)
+let economyCache = { data: null, updatedAt: 0 };
+
+app.get('/api/economy', async (req, res) => {
+  const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+  if (economyCache.data && Date.now() - economyCache.updatedAt < TWELVE_HOURS) {
+    return res.json(economyCache.data);
+  }
+
+  const indicators = [
+    { id: 'gdp_growth', code: 'NY.GDP.MKTP.KD.ZG', label: 'GDP Growth (Annual %)', unit: '%' },
+    { id: 'inflation', code: 'FP.CPI.TOTL.ZG', label: 'Inflation, CPI (Annual %)', unit: '%' },
+    { id: 'gdp_usd', code: 'NY.GDP.MKTP.CD', label: 'GDP (Current US$)', unit: 'USD' },
+    { id: 'exports', code: 'NE.EXP.GNFS.ZS', label: 'Exports (% of GDP)', unit: '%' }
+  ];
+
+  try {
+    const wbResults = await Promise.all(
+      indicators.map(async (ind) => {
+        try {
+          const r = await fetch(
+            `https://api.worldbank.org/v2/country/GHA/indicator/${ind.code}?format=json&per_page=10`
+          );
+          const json = await r.json();
+          const series = (Array.isArray(json) && Array.isArray(json[1]) ? json[1] : [])
+            .filter((row) => row.value !== null)
+            .map((row) => ({ year: row.date, value: Number(row.value) }));
+
+          return {
+            ...ind,
+            latest: series[0] || null,
+            history: series.slice(0, 6).reverse(),
+            source: 'World Bank Open Data'
+          };
+        } catch {
+          return { ...ind, latest: null, history: [], source: 'World Bank Open Data' };
+        }
+      })
+    );
+
+    let forex = null;
+    try {
+      const fxRes = await fetch('https://open.er-api.com/v6/latest/USD');
+      const fxJson = await fxRes.json();
+      if (fxJson && fxJson.rates && fxJson.rates.GHS) {
+        const ghs = fxJson.rates.GHS;
+        forex = {
+          usd: Number(ghs.toFixed(2)),
+          eur: Number((ghs / fxJson.rates.EUR).toFixed(2)),
+          gbp: Number((ghs / fxJson.rates.GBP).toFixed(2)),
+          updated: fxJson.time_last_update_utc || new Date().toUTCString(),
+          source: 'Open Exchange Rates'
+        };
+      }
+    } catch (fxErr) {
+      console.error('⚠️ Forex fetch failed:', fxErr.message);
+    }
+
+    const payload = {
+      indicators: wbResults,
+      forex,
+      fetchedAt: new Date().toISOString()
+    };
+
+    economyCache = { data: payload, updatedAt: Date.now() };
+    res.json(payload);
+  } catch (err) {
+    console.error('❌ Error fetching economic data:', err.message);
+    res.status(500).json({ error: 'Could not load economic data.' });
+  }
 });
 // 2. Initialize Paystack Payment
 app.post('/api/paystack/initialize', async (req, res) => {
