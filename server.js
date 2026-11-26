@@ -310,6 +310,21 @@ app.post('/api/articles', async (req, res) => {
         .then(r => console.log(`📣 OneSignal push status: ${r.status}`))
         .catch(e => console.error('❌ OneSignal push failed:', e.message));
     }
+    // Auto-post new article to Telegram Channel
+    if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
+      const tgText = `📰 *${newArticle.title}*\n\n${newArticle.summary || ''}\n\n🔗 Read more: https://ghana-economic-future.onrender.com/#articles`;
+      fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: process.env.TELEGRAM_CHAT_ID,
+          text: tgText,
+          parse_mode: 'Markdown'
+        })
+      })
+        .then(r => console.log(`✈️ Telegram post status: ${r.status}`))
+        .catch(e => console.error('❌ Telegram post failed:', e.message));
+    }
     console.log(`📰 NEW ARTICLE PUBLISHED TO SUPABASE: ${data.title}`);
     res.json({ success: true, article: data });
   } catch (err) {
