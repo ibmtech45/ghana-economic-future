@@ -6,7 +6,7 @@ const cors = require('cors');
 const nodemailer = require('nodemailer');
 const { createClient } = require('@supabase/supabase-js');
 const rateLimit = require('express-rate-limit');
-
+const crypto = require('crypto');
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -15,11 +15,35 @@ app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json({ limit: '5mb' })); // Allows article images to be saved cleanly
 
-// Always allow Google and social crawlers
-app.get('/robots.txt', (req, res) => {
-  res.type('text/plain');
-  res.send('User-agent: *\nAllow: /\n');
+// Security Headers (blocks clickjacking, MIME sniffing & hides server signature)
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.removeHeader('X-Powered-By');
+  next();
 });
+
+// Brute-force protection for Admin actions (25 attempts per 15 mins per IP)
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 25,
+  message: { success: false, message: 'Too many admin attempts. Please wait 15 minutes.' }
+});
+
+// Timing-safe password check + Security Log helper
+function verifyAdminPassword(input) {
+  if (!input || !ADMIN_PASSWORD) return false;
+  const a = Buffer.from(String(input).trim());
+  const b = Buffer.from(String(ADMIN_PASSWORD).trim());
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+function logSecurityEvent(event, req, details = '') {
+  const ip = req.headers['x-forwarded-for'] || req.ip || 'unknown';
+  console.log(`[SECURITY ${new Date().toISOString()}] ${event} | IP: ${ip}${details ? ' | ' + details : ''}`);
+}
 
 // Never serve server code, package files or node_modules to the public
 app.use((req, res, next) => {
@@ -116,7 +140,85 @@ app.get('/api/articles', async (req, res) => {
     res.status(500).json({ error: 'Could not load articles.' });
   }
 });
+// ================= SECURE MEDIA GALLERY API =================
+const ALLOWED_IMAGE_REGEX = /^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 
+// Public: Fetch all gallery photos
+app.get('/api/gallery', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not connected.' });
+  try {
+    const { data, error } = await supabase
+      .from('gallery')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    console.error('Error fetching gallery:', err.message);
+    res.status(500).json({ error: 'Could not load gallery.' });
+  }
+});
+
+// Admin Only: Secure Photo Upload
+app.post('/api/gallery', adminLimiter, async (req, res) => {
+  if (!supabase) return res.status(500).json({ success: false, message: 'Database not connected.' });
+
+  const { password, title, credit, image } = req.body;
+
+  if (!verifyAdminPassword(password)) {
+    logSecurityEvent('FAILED_GALLERY_UPLOAD_AUTH', req);
+    return res.status(401).json({ success: false, message: 'Incorrect admin password.' });
+  }
+  if (!title || !title.trim() || !image) {
+    return res.status(400).json({ success: false, message: 'Photo caption and image file are required.' });
+  }
+  if (!ALLOWED_IMAGE_REGEX.test(image)) {
+    logSecurityEvent('BLOCKED_INVALID_FILE_UPLOAD', req, `Title: ${title}`);
+    return res.status(400).json({ success: false, message: 'Only JPG, PNG, and WEBP images are allowed.' });
+  }
+  if (image.length > 4 * 1024 * 1024) {
+    return res.status(413).json({ success: false, message: 'Image is too large. Please keep it under 3MB.' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('gallery')
+      .insert([{
+        title: title.trim().slice(0, 140),
+        credit: (credit || 'Public Record').trim().slice(0, 100),
+        image
+      }])
+      .select();
+
+    if (error) throw error;
+    logSecurityEvent('GALLERY_PHOTO_UPLOADED', req, `Title: ${title.trim()}`);
+    res.json({ success: true, photo: data[0] });
+  } catch (err) {
+    console.error('Gallery upload error:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to save photo.' });
+  }
+});
+
+// Admin Only: Delete Photo
+app.delete('/api/gallery/:id', adminLimiter, async (req, res) => {
+  if (!supabase) return res.status(500).json({ success: false, message: 'Database not connected.' });
+
+  const { password } = req.body || {};
+  if (!verifyAdminPassword(password)) {
+    logSecurityEvent('FAILED_GALLERY_DELETE_AUTH', req, `ID: ${req.params.id}`);
+    return res.status(401).json({ success: false, message: 'Incorrect admin password.' });
+  }
+
+  try {
+    const { error } = await supabase.from('gallery').delete().eq('id', req.params.id);
+    if (error) throw error;
+    logSecurityEvent('GALLERY_PHOTO_DELETED', req, `ID: ${req.params.id}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Gallery delete error:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to delete photo.' });
+  }
+});
 // Publish a new article (Admin Password Protected)
 app.post('/api/articles', async (req, res) => {
   if (!supabase) {
