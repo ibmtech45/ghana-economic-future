@@ -528,9 +528,89 @@ input.bad,select.bad,textarea.bad{border-color:#ff6b6b}
 <!-- 8. MEDIA GALLERY -->
 <section class="sec" id="media"><div class="wrap">
   <header class="sec-head reveal"><p class="eyebrow">Media and gallery</p><h2 class="grad-text">Infographics and Public Record</h2></header>
-  <div class="gallery">
-    <button class="gal g1 reveal" data-title="Budget cycle explained (graphic slot)"></button><button class="gal g2 reveal" data-title="Reading the numbers (graphic slot)"></button><button class="gal g3 reveal" data-title="Jobs and local production (graphic slot)"></button><button class="gal g4 reveal" data-title="Source and credit slot"></button>
+ <div class="gallery" id="liveGallery">
+  <p style="color:var(--muted);grid-column:1/-1;">Loading official gallery...</p>
+</div>
+
+<style>
+  #liveGallery { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:18px; }
+  .gal-card { position:relative; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.04); cursor:pointer; transition:transform .25s ease, box-shadow .25s ease; padding:0; text-align:left; color:inherit; }
+  .gal-card:hover { transform:translateY(-4px); box-shadow:0 12px 28px rgba(0,0,0,0.45); }
+  .gal-card img { width:100%; aspect-ratio:16/10; object-fit:cover; display:block; }
+  .gal-meta { padding:12px 14px; }
+  .gal-meta strong { display:block; font-size:0.92rem; line-height:1.35; color:#fff; }
+  .gal-meta span { display:block; margin-top:4px; font-size:0.76rem; color:var(--muted,#a7b6af); }
+  #galLightbox { position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.88); backdrop-filter:blur(6px); display:none; align-items:center; justify-content:center; padding:20px; }
+  #galLightbox.open { display:flex; }
+  #galLightboxInner { max-width:920px; width:100%; background:#0f1713; border:1px solid rgba(255,255,255,0.16); border-radius:16px; overflow:hidden; position:relative; }
+  #galLightboxInner img { width:100%; max-height:74vh; object-fit:contain; background:#000; display:block; }
+  #galLightboxClose { position:absolute; top:12px; right:12px; width:38px; height:38px; border-radius:50%; border:0; background:rgba(0,0,0,0.75); color:#fff; font-size:1.3rem; cursor:pointer; }
+</style>
+
+<div id="galLightbox" role="dialog" aria-modal="true" aria-label="Photo preview">
+  <div id="galLightboxInner">
+    <button id="galLightboxClose" type="button" aria-label="Close">&times;</button>
+    <img id="galLightboxImg" src="" alt="">
+    <div style="padding:14px 18px;">
+      <strong id="galLightboxTitle" style="display:block;font-size:1rem;color:#fff;"></strong>
+      <span id="galLightboxCredit" style="display:block;margin-top:4px;font-size:0.82rem;color:var(--muted,#a7b6af);"></span>
+    </div>
   </div>
+</div>
+
+<script>
+(() => {
+  const grid = document.getElementById('liveGallery');
+  const box = document.getElementById('galLightbox');
+  const lbImg = document.getElementById('galLightboxImg');
+  const lbTitle = document.getElementById('galLightboxTitle');
+  const lbCredit = document.getElementById('galLightboxCredit');
+
+  function esc(s) {
+    return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function closeLightbox() { box.classList.remove('open'); }
+  document.getElementById('galLightboxClose').addEventListener('click', closeLightbox);
+  box.addEventListener('click', (e) => { if (e.target === box) closeLightbox(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLightbox(); });
+
+  async function loadPublicGallery() {
+    try {
+      const res = await fetch('/api/gallery');
+      const photos = await res.json();
+      if (!Array.isArray(photos) || !photos.length) {
+        grid.innerHTML = '<p style="color:var(--muted);grid-column:1/-1;">Official photos and infographics will appear here soon.</p>';
+        return;
+      }
+      grid.innerHTML = photos.map((p, i) => `
+        <button type="button" class="gal-card" data-idx="${i}">
+          <img src="${esc(p.image)}" alt="${esc(p.title)}" loading="lazy">
+          <div class="gal-meta">
+            <strong>${esc(p.title)}</strong>
+            <span>${esc(p.credit || 'Public Record')}</span>
+          </div>
+        </button>
+      `).join('');
+
+      grid.querySelectorAll('.gal-card').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const item = photos[Number(btn.dataset.idx)];
+          lbImg.src = item.image;
+          lbImg.alt = item.title;
+          lbTitle.textContent = item.title;
+          lbCredit.textContent = item.credit || 'Public Record';
+          box.classList.add('open');
+        });
+      });
+    } catch {
+      grid.innerHTML = '<p style="color:var(--muted);grid-column:1/-1;">Could not load gallery right now.</p>';
+    }
+  }
+
+  loadPublicGallery();
+})();
+</script>
   <p class="note">Only add media you own or have permission to use, with credit and source.</p>
 </div></section>
 
