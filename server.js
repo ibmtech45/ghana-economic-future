@@ -255,13 +255,24 @@ app.post('/api/articles', async (req, res) => {
       .single();
 
     if (error) throw error;
-// Auto-sync uploaded article photo to Media Gallery
-    if (image && ALLOWED_IMAGE_REGEX.test(image)) {
-      await supabase.from('gallery').insert([{
+// Auto-sync article photo (uploaded file OR https URL) to Media Gallery
+    const cleanImg = (image || '').trim();
+    const isUploadedImg = ALLOWED_IMAGE_REGEX.test(cleanImg);
+    const isImageUrl = /^https?:\/\/.+/i.test(cleanImg);
+
+    if (isUploadedImg || isImageUrl) {
+      const { error: galErr } = await supabase.from('gallery').insert([{
         title: newArticle.title.slice(0, 140),
         credit: newArticle.category || 'Public Record',
-        image
+        image: cleanImg
       }]);
+      if (galErr) {
+        console.error('❌ Gallery auto-sync error:', galErr.message);
+      } else {
+        console.log('✅ Article photo auto-synced to Gallery!');
+      }
+    } else {
+      console.log('ℹ️ Gallery auto-sync skipped (no valid photo attached).');
     }
     console.log(`📰 NEW ARTICLE PUBLISHED TO SUPABASE: ${data.title}`);
     res.json({ success: true, article: data });
