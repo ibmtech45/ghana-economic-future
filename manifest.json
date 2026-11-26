@@ -1,0 +1,20 @@
+{
+  "name": "Ghana Economic Future",
+  "short_name": "GEF",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b2e1f",
+  "theme_color": "#0b2e1f",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
