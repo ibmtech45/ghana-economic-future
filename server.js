@@ -274,6 +274,22 @@ app.post('/api/articles', async (req, res) => {
     } else {
       console.log('ℹ️ Gallery auto-sync skipped (no valid photo attached).');
     }
+    // Auto-ping IndexNow (Bing, Yandex & AI Search)
+    fetch('https://api.indexnow.org/indexnow', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify({
+        host: 'ghana-economic-future.onrender.com',
+        key: INDEXNOW_KEY,
+        keyLocation: `https://ghana-economic-future.onrender.com/${INDEXNOW_KEY}.txt`,
+        urlList: [
+          'https://ghana-economic-future.onrender.com/',
+          'https://ghana-economic-future.onrender.com/sitemap.xml'
+        ]
+      })
+    })
+      .then(r => console.log(`🔔 IndexNow ping status: ${r.status}`))
+      .catch(e => console.error('❌ IndexNow ping failed:', e.message));
     console.log(`📰 NEW ARTICLE PUBLISHED TO SUPABASE: ${data.title}`);
     res.json({ success: true, article: data });
   } catch (err) {
@@ -281,7 +297,11 @@ app.post('/api/articles', async (req, res) => {
     res.status(500).json({ success: false, message: 'Could not save article to database.' });
   }
 });
-
+// IndexNow Verification Key
+const INDEXNOW_KEY = 'gef2026indexnow8841';
+app.get(`/${INDEXNOW_KEY}.txt`, (req, res) => {
+  res.type('text/plain').send(INDEXNOW_KEY);
+});
 // Delete an article (Admin Password Protected)
 app.delete('/api/articles/:id', async (req, res) => {
   if (!supabase) {
