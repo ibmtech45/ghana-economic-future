@@ -304,7 +304,7 @@ app.post('/api/articles', async (req, res) => {
           included_segments: ['Total Subscriptions'],
           headings: { en: newArticle.title.slice(0, 80) },
           contents: { en: (newArticle.summary || 'New report published on Ghana Economic Future.').slice(0, 140) },
-          url: 'https://ghana-economic-future.onrender.com/#articles'
+          url: `https://ghana-economic-future.onrender.com/article/${data.id}`
         })
       })
         .then(r => console.log(`📣 OneSignal push status: ${r.status}`))
@@ -312,7 +312,7 @@ app.post('/api/articles', async (req, res) => {
     }
     // Auto-post new article to Telegram Channel
     if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
-      const tgText = `📰 *${newArticle.title}*\n\n${newArticle.summary || ''}\n\n🔗 Read more: https://ghana-economic-future.onrender.com/#articles`;
+      const tgText = `📰 *${newArticle.title}*\n\n${newArticle.summary || ''}\n\n🔗 Read more: https://ghana-economic-future.onrender.com/article/${data.id}`;
       fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
