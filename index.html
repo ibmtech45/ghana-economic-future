@@ -389,6 +389,10 @@ input.bad,select.bad,textarea.bad{border-color:#ff6b6b}
     <span class="forex-pair">EUR/GHS</span>
     <span class="forex-rate" id="fx-eur">...</span>
   </span>
+  <span class="forex-item">
+    <span class="forex-pair">SAR/GHS</span>
+    <span class="forex-rate" id="fx-sar">...</span>
+  </span>
 </div>
 
 <main>
@@ -1449,7 +1453,8 @@ bindForm('#payForm', [['email', emailOK, 'Please enter a valid email.'], ['amoun
       if (usdVal) document.getElementById('fx-usd').textContent = `GH₵${usdVal.toFixed(2)}`;
       if (gbpVal) document.getElementById('fx-gbp').textContent = `GH₵${gbpVal.toFixed(2)}`;
       if (eurVal) document.getElementById('fx-eur').textContent = `GH₵${eurVal.toFixed(2)}`;
-
+const sarVal = data.sar ?? data.toGHS.SAR;
+      if (sarVal) document.getElementById('fx-sar').textContent = `GH₵${sarVal.toFixed(2)}`;
       // Update #forex Section Cards
       document.getElementById('rateUSD').textContent = `GH₵ ${data.toGHS.USD.toFixed(2)}`;
       document.getElementById('rateGBP').textContent = `GH₵ ${data.toGHS.GBP.toFixed(2)}`;
