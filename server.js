@@ -7,6 +7,7 @@ const nodemailer = require('nodemailer');
 const { createClient } = require('@supabase/supabase-js');
 const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
+
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -30,6 +31,29 @@ const adminLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 25,
   message: { success: false, message: 'Too many admin attempts. Please wait 15 minutes.' }
+});
+
+// Config & Credentials
+const PAYSTACK_SECRET = (process.env.PAYSTACK_SECRET_KEY || '').trim();
+const GEMINI_KEY = (process.env.GEMINI_API_KEY || '').trim();
+const EMAIL_USER = (process.env.EMAIL_USER || 'ibmtech45@gmail.com').trim();
+const EMAIL_PASS = (process.env.EMAIL_PASS || '').trim();
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'Ghana2027!').trim();
+const INDEXNOW_KEY = 'gef2026indexnow8841';
+
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
+const SUPABASE_KEY = (process.env.SUPABASE_KEY || '').trim();
+
+const supabase = SUPABASE_URL && SUPABASE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_KEY)
+  : null;
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: EMAIL_USER,
+    pass: EMAIL_PASS
+  }
 });
 
 // Timing-safe password check + Security Log helper
@@ -62,30 +86,14 @@ app.use(express.static(__dirname, {
   }
 }));
 
-const PAYSTACK_SECRET = (process.env.PAYSTACK_SECRET_KEY || '').trim();
-const GEMINI_KEY = (process.env.GEMINI_API_KEY || '').trim();
-const EMAIL_USER = (process.env.EMAIL_USER || 'ibmtech45@gmail.com').trim();
-const EMAIL_PASS = (process.env.EMAIL_PASS || '').trim();
-const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'Ghana2027!').trim();
-
-const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
-const SUPABASE_KEY = (process.env.SUPABASE_KEY || '').trim();
-
-const supabase = SUPABASE_URL && SUPABASE_KEY
-  ? createClient(SUPABASE_URL, SUPABASE_KEY)
-  : null;
-
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: EMAIL_USER,
-    pass: EMAIL_PASS
-  }
-});
-
 // Serve index.html as the main homepage
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// IndexNow Verification Key
+app.get(`/${INDEXNOW_KEY}.txt`, (req, res) => {
+  res.type('text/plain').send(INDEXNOW_KEY);
 });
 
 // Dynamic Sitemap for Google Search Console
@@ -140,6 +148,7 @@ app.get('/api/articles', async (req, res) => {
     res.status(500).json({ error: 'Could not load articles.' });
   }
 });
+
 // ================= SECURE MEDIA GALLERY API =================
 const ALLOWED_IMAGE_REGEX = /^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 
@@ -219,6 +228,7 @@ app.delete('/api/gallery/:id', adminLimiter, async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to delete photo.' });
   }
 });
+
 // Publish a new article (Admin Password Protected)
 app.post('/api/articles', async (req, res) => {
   if (!supabase) {
@@ -255,7 +265,8 @@ app.post('/api/articles', async (req, res) => {
       .single();
 
     if (error) throw error;
-// Auto-sync article photo (uploaded file OR https URL) to Media Gallery
+
+    // Auto-sync article photo (uploaded file OR https URL) to Media Gallery
     const cleanImg = (image || '').trim();
     const isUploadedImg = ALLOWED_IMAGE_REGEX.test(cleanImg);
     const isImageUrl = /^https?:\/\/.+/i.test(cleanImg);
@@ -274,6 +285,7 @@ app.post('/api/articles', async (req, res) => {
     } else {
       console.log('ℹ️ Gallery auto-sync skipped (no valid photo attached).');
     }
+
     // Auto-ping IndexNow (Bing, Yandex & AI Search)
     fetch('https://api.indexnow.org/indexnow', {
       method: 'POST',
@@ -284,13 +296,15 @@ app.post('/api/articles', async (req, res) => {
         keyLocation: `https://ghana-economic-future.onrender.com/${INDEXNOW_KEY}.txt`,
         urlList: [
           'https://ghana-economic-future.onrender.com/',
+          `https://ghana-economic-future.onrender.com/article/${data.id}`,
           'https://ghana-economic-future.onrender.com/sitemap.xml'
         ]
       })
     })
       .then(r => console.log(`🔔 IndexNow ping status: ${r.status}`))
       .catch(e => console.error('❌ IndexNow ping failed:', e.message));
-      // Auto-broadcast Web Push Notification via OneSignal
+
+    // Auto-broadcast Web Push Notification via OneSignal
     if (process.env.ONESIGNAL_APP_ID && process.env.ONESIGNAL_API_KEY) {
       fetch('https://api.onesignal.com/notifications', {
         method: 'POST',
@@ -310,6 +324,7 @@ app.post('/api/articles', async (req, res) => {
         .then(r => console.log(`📣 OneSignal push status: ${r.status}`))
         .catch(e => console.error('❌ OneSignal push failed:', e.message));
     }
+
     // Auto-post new article to Telegram Channel
     if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
       const tgText = `📰 *${newArticle.title}*\n\n${newArticle.summary || ''}\n\n🔗 Read more: https://ghana-economic-future.onrender.com/article/${data.id}`;
@@ -325,6 +340,7 @@ app.post('/api/articles', async (req, res) => {
         .then(r => console.log(`✈️ Telegram post status: ${r.status}`))
         .catch(e => console.error('❌ Telegram post failed:', e.message));
     }
+
     console.log(`📰 NEW ARTICLE PUBLISHED TO SUPABASE: ${data.title}`);
     res.json({ success: true, article: data });
   } catch (err) {
@@ -332,11 +348,7 @@ app.post('/api/articles', async (req, res) => {
     res.status(500).json({ success: false, message: 'Could not save article to database.' });
   }
 });
-// IndexNow Verification Key
-const INDEXNOW_KEY = 'gef2026indexnow8841';
-app.get(`/${INDEXNOW_KEY}.txt`, (req, res) => {
-  res.type('text/plain').send(INDEXNOW_KEY);
-});
+
 // Delete an article (Admin Password Protected)
 app.delete('/api/articles/:id', async (req, res) => {
   if (!supabase) {
@@ -526,6 +538,7 @@ app.post('/api/quote', async (req, res) => {
     res.status(500).json({ error: 'Failed to save submission.' });
   }
 });
+
 // Fetch Submissions (Admin Password Protected)
 app.post('/api/submissions', async (req, res) => {
   const { password } = req.body;
@@ -544,7 +557,9 @@ app.post('/api/submissions', async (req, res) => {
     console.error('❌ Error fetching submissions:', err.message);
     res.status(500).json({ success: false, message: 'Could not load submissions.' });
   }
-});// Automated Ghana Economic Data (World Bank + Live Forex, cached 12 hours)
+});
+
+// Automated Ghana Economic Data (World Bank + Live Forex, cached 12 hours)
 let economyCache = { data: null, updatedAt: 0 };
 
 app.get('/api/economy', async (req, res) => {
@@ -617,6 +632,7 @@ app.get('/api/economy', async (req, res) => {
     res.status(500).json({ error: 'Could not load economic data.' });
   }
 });
+
 // 2. Initialize Paystack Payment
 app.post('/api/paystack/initialize', async (req, res) => {
   const { email, amount, item } = req.body;
@@ -888,12 +904,13 @@ Draft Content: ${(content || '').slice(0, 3500)}`;
   res.status(503).json({ success: false, message: 'Could not generate SEO pack right now. Try again.' });
 });
 
-// 5. Live Forex / Currency Rate Route (All World Currencies, Cached 1 hour)
+// 5. Unified Live Forex Route (Powers both the Top Forex Strip & the #forex Converter, Cached 30 mins)
 let forexCache = { data: null, updatedAt: 0 };
 
 app.get('/api/forex', async (req, res) => {
+  const THIRTY_MINS = 30 * 60 * 1000;
   const now = Date.now();
-  if (forexCache.data && now - forexCache.updatedAt < 60 * 60 * 1000) {
+  if (forexCache.data && now - forexCache.updatedAt < THIRTY_MINS) {
     return res.json(forexCache.data);
   }
 
@@ -914,6 +931,11 @@ app.get('/api/forex', async (req, res) => {
     }
 
     const payload = {
+      success: true,
+      usd: toGHS.USD,
+      gbp: toGHS.GBP,
+      eur: toGHS.EUR,
+      updatedAt: json.time_last_update_utc,
       updated: json.time_last_update_utc,
       toGHS
     };
@@ -922,7 +944,8 @@ app.get('/api/forex', async (req, res) => {
     res.json(payload);
   } catch (error) {
     console.error('❌ Forex fetch error:', error.message);
-    res.status(500).json({ error: 'Could not load live exchange rates.' });
+    if (forexCache.data) return res.json(forexCache.data);
+    res.status(503).json({ success: false, error: 'Could not load live exchange rates.' });
   }
 });
 

@@ -19,7 +19,10 @@
   <meta property="og:description" content="Daily economic insights, fiscal discipline updates, and national development analysis on Ghana's economic recovery." />
   <meta property="og:url" content="https://ghana-economic-future.onrender.com/" />
   <meta property="og:image" content="https://ghana-economic-future.onrender.com/portrait.jpg" />
- 
+ <meta property="og:image:secure_url" content="https://ghana-economic-future.onrender.com/portrait.jpg" />
+<meta property="og:image:type" content="image/jpeg" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
 
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Ghana's Economic Future — Policy, Recovery & National Vision" />
@@ -39,6 +42,62 @@
   </script>
 
 <style>
+  /* Live Forex Market Strip */
+.forex-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px 22px;
+  padding: 10px 16px;
+  background: rgba(10, 24, 16, 0.92);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.85rem;
+  color: #d7e3dc;
+}
+
+.forex-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #4ade80;
+}
+
+.forex-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 8px #4ade80;
+  animation: fxPulse 1.8s infinite;
+}
+
+@keyframes fxPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.forex-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.forex-pair {
+  color: #9bb0a4;
+  font-weight: 600;
+}
+
+.forex-rate {
+  color: #f5c518;
+  font-weight: 700;
+}
   /* 3D Animated Robotic AI Assistant Button */
 .ai-robot-btn {
   position: fixed;
@@ -309,6 +368,22 @@ input.bad,select.bad,textarea.bad{border-color:#ff6b6b}
     <a href="#articles">Articles</a><a href="#media">Gallery</a><a href="#vision">Future Vision</a><a href="#movement">Our Movement</a><a href="#contact">Contact</a>
     <a href="#payForm">Support</a>
   </nav>
+  <!-- Live Forex Strip -->
+<div class="forex-strip" id="forexStrip" aria-label="Live Ghana Cedi Exchange Rates">
+  <span class="forex-badge"><span class="forex-dot"></span>Live Market FX</span>
+  <span class="forex-item">
+    <span class="forex-pair">USD/GHS</span>
+    <span class="forex-rate" id="fx-usd">...</span>
+  </span>
+  <span class="forex-item">
+    <span class="forex-pair">GBP/GHS</span>
+    <span class="forex-rate" id="fx-gbp">...</span>
+  </span>
+  <span class="forex-item">
+    <span class="forex-pair">EUR/GHS</span>
+    <span class="forex-rate" id="fx-eur">...</span>
+  </span>
+</div>
 </header>
 
 <main>
